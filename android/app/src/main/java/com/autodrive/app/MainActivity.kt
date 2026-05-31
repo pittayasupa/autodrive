@@ -75,13 +75,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupDetector() {
         val base = BaseOptions.builder()
-            .setModelAssetPath("efficientdet_lite0.tflite")
+            .setModelAssetPath("efficientdet_lite2.tflite")   // อินพุต 448px ตรวจวัตถุไกล/เล็กดีกว่า
             .build()
         val options = ObjectDetector.ObjectDetectorOptions.builder()
             .setBaseOptions(base)
             .setRunningMode(RunningMode.IMAGE)
-            .setScoreThreshold(0.4f)
-            .setMaxResults(25)
+            .setScoreThreshold(0.3f)     // ต่ำลง -> จับไฟ/วัตถุไกลได้ไวขึ้น
+            .setMaxResults(30)
             .build()
         detector = ObjectDetector.createFromOptions(this, options)
     }

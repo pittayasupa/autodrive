@@ -27,11 +27,11 @@ jobs:
       - name: Install SDK packages
         run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Download detection model (EfficientDet-Lite0)
+      - name: Download detection model (EfficientDet-Lite2)
         run: |
           mkdir -p android/app/src/main/assets
-          curl -L --fail -o android/app/src/main/assets/efficientdet_lite0.tflite \
-            https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/latest/efficientdet_lite0.tflite
+          curl -L --fail -o android/app/src/main/assets/efficientdet_lite2.tflite \
+            https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite2/float32/latest/efficientdet_lite2.tflite
           ls -lh android/app/src/main/assets/
 
       - name: Set up Gradle

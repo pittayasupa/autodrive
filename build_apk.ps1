@@ -30,9 +30,9 @@ Write-Output "== installing platform-tools / android-34 / build-tools 34.0.0 =="
 # --- 4) โหลดโมเดล detection ---
 $assets = 'D:\AutoDrive\android\app\src\main\assets'
 New-Item -ItemType Directory -Force $assets | Out-Null
-if (-not (Test-Path "$assets\efficientdet_lite0.tflite")) {
+if (-not (Test-Path "$assets\efficientdet_lite2.tflite")) {
     Write-Output "== downloading model =="
-    Invoke-WebRequest "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/latest/efficientdet_lite0.tflite" -OutFile "$assets\efficientdet_lite0.tflite" -UseBasicParsing
+    Invoke-WebRequest "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite2/float32/latest/efficientdet_lite2.tflite" -OutFile "$assets\efficientdet_lite2.tflite" -UseBasicParsing
 }
 
 # --- 5) build ---
