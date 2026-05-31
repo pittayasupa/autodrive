@@ -139,13 +139,16 @@ class MainActivity : AppCompatActivity() {
         val cd = (settings.cooldownSec * 1000).toLong()
         val vol = settings.volume
 
+        val lt = settings.alertTrafficLight
         // เรียงตามความสำคัญ (สูง -> ต่ำ)
         val events = listOf(
             Ev("ped", a.pedestrian && settings.alertPedestrian, "ระวัง คนข้ามถนน เบรก", "Pedestrian, brake"),
             Ev("red", a.redLight && settings.alertRedLight, "ไฟแดงข้างหน้า เตรียมหยุด", "Red light, prepare to stop"),
             Ev("fcw", a.leadLevel == Level.CRIT && settings.alertFcw, "ระวัง รถข้างหน้าใกล้มาก เบรก", "Car too close, brake"),
+            Ev("yellow", a.lightColor == "yellow" && lt, "ไฟเหลืองข้างหน้า ระวัง ชะลอ", "Yellow light ahead, slow down"),
             Ev("stop", a.stopSign && settings.alertStopSign, "ป้ายหยุดข้างหน้า", "Stop sign ahead"),
-            Ev("light", a.trafficLight && !a.redLight && settings.alertTrafficLight, "มีไฟจราจรข้างหน้า ระวัง", "Traffic light ahead"),
+            Ev("light", a.lightColor == "unknown" && lt, "มีไฟจราจรข้างหน้า ระวัง", "Traffic light ahead"),
+            Ev("green", a.lightColor == "green" && lt, "ไฟเขียว ไปได้", "Green light, go"),
             Ev("slow", a.leadLevel == Level.WARN && settings.alertFcw, "ชะลอ รักษาระยะ", "Slow down, keep distance")
         )
 

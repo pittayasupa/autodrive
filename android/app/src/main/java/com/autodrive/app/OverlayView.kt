@@ -24,6 +24,7 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     private val cOrange = Color.parseColor("#FF7A18")
     private val cYellow = Color.parseColor("#FFCC00")
     private val cRed = Color.parseColor("#FF2D55")
+    private val cOk = Color.parseColor("#22FF88")
     private val cHud = Color.parseColor("#00F0FF")
 
     fun setResults(r: AdasResult, w: Int, h: Int) {
@@ -55,6 +56,26 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
             canvas.drawLine(lx, height.toFloat(), lx + (width / 2f - lx) * 0.45f, height * 0.5f, box)
             canvas.drawLine(rx, height.toFloat(), rx - (rx - width / 2f) * 0.45f, height * 0.5f, box)
             box.alpha = 255
+        }
+
+        // ---- ป้ายสถานะไฟจราจร (มุมซ้ายบน) ----
+        if (r.trafficLight) {
+            val col = when (r.lightColor) {
+                "red" -> cRed; "green" -> cOk; "yellow" -> cYellow; else -> Color.LTGRAY
+            }
+            val label = when (r.lightColor) {
+                "red" -> "ไฟแดง"; "green" -> "ไฟเขียว"; "yellow" -> "ไฟเหลือง"; else -> "ไฟจราจร"
+            }
+            text.textSize = 30f
+            val tw = text.measureText(label)
+            panel.color = Color.parseColor("#E0050C14")
+            val rect = RectF(16f, 134f, 16f + tw + 70f, 134f + 50f)
+            canvas.drawRoundRect(rect, 12f, 12f, panel)
+            fill.color = col
+            canvas.drawCircle(rect.left + 27f, rect.centerY(), 14f, fill)
+            text.color = Color.WHITE
+            canvas.drawText(label, rect.left + 50f, rect.centerY() + 10f, text)
+            text.textSize = 34f
         }
 
         // ---- กล่อง detection ----

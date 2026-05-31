@@ -136,7 +136,7 @@ class Adas(private val s: Settings) {
             else -> Level.NORMAL
         }
 
-        val (cmd, sub, level) = decide(leadDist, ttc, pedInLane, redLight, trafficLight, stopSign, warnDist, critDist)
+        val (cmd, sub, level) = decide(leadDist, ttc, pedInLane, redLight, trafficLight, stopSign, lightColor, warnDist, critDist)
         return AdasResult(
             boxes, cmd, sub, level, leadLevel, leadDist, ttc,
             redLight, trafficLight, stopSign, pedInLane, lightColor, laneL, laneR
@@ -145,16 +145,20 @@ class Adas(private val s: Settings) {
 
     private fun decide(
         lead: Float, ttc: Float?, ped: Boolean, red: Boolean, light: Boolean, stop: Boolean,
-        warnDist: Float, critDist: Float
+        lightColor: String?, warnDist: Float, critDist: Float
     ): Triple<String, String, Level> {
         if (ped) return Triple("เบรก! คนข้ามถนน", "EMERGENCY STOP", Level.CRIT)
-        if (red) return Triple("ไฟแดง — เตรียมหยุด", "RED LIGHT - STOP", Level.CRIT)
+        if (red) return Triple("ไฟแดงข้างหน้า — เตรียมหยุด", "RED LIGHT - STOP", Level.CRIT)
         if (lead < critDist || (ttc != null && ttc < ttcCrit))
             return Triple("เบรก! รถหน้าใกล้มาก", "FORWARD COLLISION", Level.CRIT)
         if (lead < warnDist || (ttc != null && ttc < ttcWarn))
             return Triple("ชะลอ — รักษาระยะ", "SLOW DOWN", Level.WARN)
         if (stop) return Triple("ป้ายหยุดข้างหน้า", "STOP SIGN", Level.WARN)
-        if (light) return Triple("มีทางแยก/ไฟจราจร", "TRAFFIC LIGHT", Level.WARN)
+        when (lightColor) {
+            "yellow" -> return Triple("ไฟเหลืองข้างหน้า — ระวัง", "YELLOW LIGHT", Level.WARN)
+            "green" -> return Triple("ไฟเขียว — ไปได้", "GREEN LIGHT", Level.NORMAL)
+        }
+        if (light) return Triple("มีไฟจราจรข้างหน้า", "TRAFFIC LIGHT", Level.WARN)
         return Triple("ขับปกติ", "CRUISING", Level.NORMAL)
     }
 
