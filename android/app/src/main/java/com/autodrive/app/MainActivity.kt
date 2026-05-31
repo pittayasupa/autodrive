@@ -125,11 +125,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private data class Ev(val key: String, val present: Boolean, val th: String, val en: String)
+    private data class Ev(
+        val key: String, val trigger: Boolean, val onScreen: Boolean,
+        val th: String, val en: String
+    )
 
     /**
-     * เตือนเสียงแบบ edge-trigger: เตือนครั้งเดียวตอนเริ่มเจอ, reset เมื่อหายไป
-     * เรียก gate.check ทุก event ทุกเฟรม (อัปเดตสถานะ) แล้วพูดเฉพาะตัวสำคัญสุดที่เพิ่งเริ่มเกิด
+     * เตือนเสียงแบบ edge-trigger: เตือนครั้งเดียวตอนเริ่มเจอ
+     * และ "reset เมื่อวัตถุนั้นหายจากจอจริง ๆ" (onScreen=false ต่อเนื่อง) เท่านั้น
      */
     private fun handleAudio(a: AdasResult) {
         val sp = speaker ?: return
@@ -140,21 +143,32 @@ class MainActivity : AppCompatActivity() {
         val vol = settings.volume
 
         val lt = settings.alertTrafficLight
-        // เรียงตามความสำคัญ (สูง -> ต่ำ)
+        val anyLight = a.trafficLight          // ยังมีไฟจราจรในจอ
+        val leadExists = a.leadDistM < 900f     // ยังมีรถคันหน้าในเลน
+
+        // (key, trigger=ควรเตือน, onScreen=ยังเห็นวัตถุชนิดนั้นในจอ, ข้อความ)
         val events = listOf(
-            Ev("ped", a.pedestrian && settings.alertPedestrian, "ระวัง คนข้ามถนน เบรก", "Pedestrian, brake"),
-            Ev("red", a.redLight && settings.alertRedLight, "ไฟแดงข้างหน้า เตรียมหยุด", "Red light, prepare to stop"),
-            Ev("fcw", a.leadLevel == Level.CRIT && settings.alertFcw, "ระวัง รถข้างหน้าใกล้มาก เบรก", "Car too close, brake"),
-            Ev("yellow", a.lightColor == "yellow" && lt, "ไฟเหลืองข้างหน้า ระวัง ชะลอ", "Yellow light ahead, slow down"),
-            Ev("stop", a.stopSign && settings.alertStopSign, "ป้ายหยุดข้างหน้า", "Stop sign ahead"),
-            Ev("light", a.lightColor == "unknown" && lt, "มีไฟจราจรข้างหน้า ระวัง", "Traffic light ahead"),
-            Ev("green", a.lightColor == "green" && lt, "ไฟเขียว ไปได้", "Green light, go"),
-            Ev("slow", a.leadLevel == Level.WARN && settings.alertFcw, "ชะลอ รักษาระยะ", "Slow down, keep distance")
+            Ev("ped", a.pedestrian && settings.alertPedestrian, a.personOnScreen,
+                "ระวัง คนข้ามถนน เบรก", "Pedestrian, brake"),
+            Ev("red", a.redLight && settings.alertRedLight, anyLight,
+                "ไฟแดงข้างหน้า เตรียมหยุด", "Red light, prepare to stop"),
+            Ev("fcw", a.leadLevel == Level.CRIT && settings.alertFcw, leadExists,
+                "ระวัง รถข้างหน้าใกล้มาก เบรก", "Car too close, brake"),
+            Ev("yellow", a.lightColor == "yellow" && lt, anyLight,
+                "ไฟเหลืองข้างหน้า ระวัง ชะลอ", "Yellow light ahead, slow down"),
+            Ev("stop", a.stopSign && settings.alertStopSign, a.stopSign,
+                "ป้ายหยุดข้างหน้า", "Stop sign ahead"),
+            Ev("light", a.lightColor == "unknown" && lt, anyLight,
+                "มีไฟจราจรข้างหน้า ระวัง", "Traffic light ahead"),
+            Ev("green", a.lightColor == "green" && lt, anyLight,
+                "ไฟเขียว ไปได้", "Green light, go"),
+            Ev("slow", a.leadLevel == Level.WARN && settings.alertFcw, leadExists,
+                "ชะลอ รักษาระยะ", "Slow down, keep distance")
         )
 
         var fired = false
         for (e in events) {
-            val eligible = gate.check(e.key, e.present)   // ต้องเรียกทุก event เพื่ออัปเดต reset
+            val eligible = gate.check(e.key, e.trigger, e.onScreen)   // เรียกทุก event เพื่ออัปเดต reset
             if (!fired && eligible) {
                 sp.alert(e.key, e.th, e.en, v, b, cd, vol)
                 gate.markFired(e.key)

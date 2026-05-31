@@ -27,6 +27,7 @@ data class AdasResult(
     val trafficLight: Boolean,
     val stopSign: Boolean,
     val pedestrian: Boolean,
+    val personOnScreen: Boolean,   // มีคน/จักรยานในจอ (ทุกตำแหน่ง) — ใช้ตัดสิน reset
     val lightColor: String?,
     // รูปทรงเลน (trapezoid) เป็น "สัดส่วน 0–1 ของจอ" — ให้ตรงกับหน้าปรับเลน
     val laneNearL: Float, val laneNearR: Float,
@@ -111,12 +112,14 @@ class Adas(private val s: Settings) {
         var trafficLight = false
         var stopSign = false
         var redLight = false
+        var personOnScreen = false
         var lightColor: String? = null
 
         for (p in dets) {
             val isInLane = inLane(p.cx, p.rect.bottom)
             var level = Level.NORMAL
             var label = "${p.name} ${"%.2f".format(p.score)}"
+            if (p.name in vulnerable) personOnScreen = true
 
             when {
                 p.name in vulnerable && p.dist != null && p.dist < pedCrit && isInLane -> {
@@ -168,7 +171,7 @@ class Adas(private val s: Settings) {
         val (cmd, sub, lvl) = decide(leadDist, ttc, pedInLane, redLight, trafficLight, stopSign, lightColor, warnDist, critDist)
         return AdasResult(
             boxes, cmd, sub, lvl, leadLevel, leadDist, ttc,
-            redLight, trafficLight, stopSign, pedInLane, lightColor,
+            redLight, trafficLight, stopSign, pedInLane, personOnScreen, lightColor,
             blF, brF, tlF, trF, tyF      // ส่งเป็นสัดส่วน 0–1
         )
     }
