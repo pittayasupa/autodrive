@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:        # กดรันเองได้จากแท็บ Actions
 
+permissions:
+  contents: write           # ให้สิทธิ์สร้าง Release แนบ APK
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,9 +43,19 @@ jobs:
         working-directory: android
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: autodrive-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Publish APK to Release (ลิงก์โหลดตรง ไม่ต้อง login)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: AutoDrive APK (ล่าสุด)
+          body: |
+            ดาวน์โหลด **app-debug.apk** ด้านล่างได้เลย (เปิดบนมือถือก็โหลดได้)
+            แล้วแตะติดตั้ง → อนุญาต "ติดตั้งจากแหล่งที่ไม่รู้จัก" → เปิดแอป → อนุญาตกล้อง
+          files: android/app/build/outputs/apk/debug/*.apk
