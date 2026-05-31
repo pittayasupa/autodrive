@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoDrive — ADAS HUD Mockup</title>
+<style>
+  :root{
+    --hud:#00f0ff; --hud-dim:#0a8fa0; --warn:#ffcc00; --danger:#ff2d55;
+    --ok:#22ff88; --det:#ff7a18; --wire:#ffe14d; --ink:#e8fbff; --bg:#05080d;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;
+    padding:18px;overflow:hidden;}
+  .device{position:relative;width:min(94vw,960px);aspect-ratio:16/9;
+    border-radius:16px;overflow:hidden;background:#05080d;
+    box-shadow:0 30px 80px rgba(0,240,255,.08),0 0 0 1px rgba(0,240,255,.15);}
+
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+
+  /* ===== ฉากถนนจำลอง ===== */
+  .scene{position:absolute;inset:0;overflow:hidden;
+    background:linear-gradient(#9fc4e8 0%,#bcd6ee 30%,#7d8a9a 48%,#4a4d54 56%,#2a2c32 72%,#16181d 100%);}
+  .sky-glow{position:absolute;top:4%;left:46%;width:200px;height:90px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(255,255,235,.7),transparent);filter:blur(6px)}
+  .road{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:170%;height:50%;
+    background:linear-gradient(#454850,#202227);clip-path:polygon(40% 0,60% 0,100% 100%,0 100%);}
+  .lane-dash{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:2.4%;height:50%;
+    background:repeating-linear-gradient(#f4f4f4 0 7%,transparent 7% 17%);
+    clip-path:polygon(35% 0,65% 0,100% 100%,0 100%);animation:road 1s linear infinite;opacity:.9}
+  @keyframes road{from{background-position-y:0}to{background-position-y:55px}}
+  .edge{position:absolute;bottom:0;height:50%;width:5px;background:linear-gradient(#fff,transparent)}
+  .edge.l{left:50%;transform:translateX(-200px) skewX(-27deg);transform-origin:bottom}
+  .edge.r{left:50%;transform:translateX(200px) skewX(27deg);transform-origin:bottom}
+  .lead-car{position:absolute;left:50%;top:44%;transform:translateX(-50%);width:96px;height:60px;
+    border-radius:10px 10px 7px 7px;background:linear-gradient(#b8bcc2,#7d8085);
+    box-shadow:0 8px 16px rgba(0,0,0,.5);animation:bob 3.6s ease-in-out infinite}
+  .lead-car::before{content:"";position:absolute;left:9px;right:9px;top:7px;height:18px;border-radius:6px;background:#23242a}
+  .lead-car::after{content:"";position:absolute;bottom:6px;left:7px;width:13px;height:7px;border-radius:3px;
+    background:#ff3b30;box-shadow:62px 0 #ff3b30}
+  @keyframes bob{0%,100%{top:44%}50%{top:42.6%}}
+  .sidecar{position:absolute;width:70px;height:46px;border-radius:8px;background:linear-gradient(#5a6270,#363b45);bottom:18%}
+  .sidecar.l{left:6%}.sidecar.r{right:4%;width:90px;height:58px;background:linear-gradient(#4a6a8a,#2c3f52)}
+
+  /* ===== HUD ===== */
+  .hud{position:absolute;inset:0;pointer-events:none;font-family:var(--mono)}
+  .scanline{position:absolute;inset:0;background:repeating-linear-gradient(transparent 0 3px,rgba(0,0,0,.16) 3px 4px);mix-blend-mode:overlay;opacity:.35}
+  .vignette{position:absolute;inset:0;box-shadow:inset 0 0 130px rgba(0,0,0,.65)}
+  .svg{position:absolute;inset:0;width:100%;height:100%}
+
+  /* กล่อง detection 2D (สไตล์ YOLO ส้ม) */
+  .box{position:absolute;border:2px solid var(--det);border-radius:1px;transition:all .45s cubic-bezier(.4,0,.2,1)}
+  .box .tag{position:absolute;top:-18px;left:-2px;background:var(--det);color:#1a0c00;
+    font-size:11px;font-weight:700;padding:0 6px;white-space:nowrap;font-family:var(--mono)}
+  /* ป้ายระยะ มุมขวาล่างของกล่อง */
+  .box .dist{position:absolute;right:-2px;bottom:-17px;background:#02121a;color:var(--hud);
+    border:1px solid var(--hud-dim);font-size:11px;font-weight:700;padding:0 5px;white-space:nowrap}
+  .box.bus{border-color:var(--wire)}.box.bus .tag{background:var(--wire)}
+  .box.near{border-color:var(--warn);box-shadow:0 0 14px rgba(255,204,0,.5)}.box.near .tag{background:var(--warn)}
+  .box.crit{border-color:var(--danger);box-shadow:0 0 16px rgba(255,45,85,.7);animation:pulseB .7s infinite}
+  .box.crit .tag{background:var(--danger);color:#fff}
+  .box.sign{border-color:var(--danger)}.box.sign .tag{background:var(--danger);color:#fff}
+  @keyframes pulseB{0%,100%{opacity:1}50%{opacity:.5}}
+
+  /* แถบคำสั่งหลัก */
+  .command{position:absolute;top:16px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:center;gap:13px;background:rgba(4,11,18,.85);backdrop-filter:blur(8px);
+    border:1px solid var(--hud-dim);border-radius:13px;padding:11px 22px;
+    box-shadow:0 0 28px rgba(0,240,255,.22);min-width:300px;justify-content:center;transition:.35s}
+  .command.alert{border-color:var(--warn);box-shadow:0 0 32px rgba(255,204,0,.38)}
+  .command.stop{border-color:var(--danger);box-shadow:0 0 40px rgba(255,45,85,.5);animation:pulseB .6s infinite}
+  .command .ico{font-size:33px;line-height:1}
+  .command .txt b{font-size:20px;font-family:ui-sans-serif,system-ui,sans-serif;letter-spacing:.3px}
+  .command .txt span{display:block;font-size:11px;color:var(--hud);opacity:.85;letter-spacing:1px}
+
+  .arrow{position:absolute;top:48%;font-size:64px;opacity:0;transition:.3s;color:var(--hud);text-shadow:0 0 20px var(--hud)}
+  .arrow.left{left:7%}.arrow.right{right:7%}
+  .arrow.show{opacity:1;animation:fl 1s ease-in-out infinite alternate}
+  @keyframes fl{to{transform:translateY(-8px) scale(1.08)}}
+
+  /* แถบระยะรถหน้า (เด่น ๆ กลางล่าง) */
+  .fcw{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:center;gap:14px;background:rgba(4,11,18,.85);backdrop-filter:blur(8px);
+    border:1px solid var(--hud-dim);border-radius:12px;padding:8px 20px;transition:.3s}
+  .fcw .lead{font-size:11px;opacity:.7}
+  .fcw .leadval{font-size:26px;font-weight:800;color:var(--hud)}
+  .fcw .leadval small{font-size:12px;opacity:.7}
+  .fcw .ttc{font-size:11px;opacity:.7;border-left:1px solid var(--hud-dim);padding-left:14px}
+  .fcw .ttc b{display:block;font-size:18px;color:var(--ok)}
+  .fcw.warn{border-color:var(--warn)} .fcw.warn .leadval{color:var(--warn)} .fcw.warn .ttc b{color:var(--warn)}
+  .fcw.crit{border-color:var(--danger);animation:pulseB .6s infinite} .fcw.crit .leadval,.fcw.crit .ttc b{color:var(--danger)}
+
+  /* telemetry ซ้ายล่าง */
+  .telemetry{position:absolute;left:14px;bottom:14px;display:flex;gap:10px;align-items:flex-end}
+  .gauge{background:rgba(4,11,18,.82);border:1px solid var(--hud-dim);border-radius:11px;padding:7px 13px;backdrop-filter:blur(6px)}
+  .gauge .val{font-size:27px;font-weight:700;color:var(--hud);line-height:1}
+  .gauge .unit{font-size:10px;opacity:.6;letter-spacing:1px}
+  .pedals{display:flex;flex-direction:column;gap:5px}
+  .pedal{display:flex;align-items:center;gap:7px;font-size:10px;background:rgba(4,11,18,.82);
+    border:1px solid var(--hud-dim);border-radius:7px;padding:4px 9px}
+  .pedal .bar{width:54px;height:6px;border-radius:3px;background:#13202b;overflow:hidden}
+  .pedal .bar i{display:block;height:100%;width:0%;transition:width .4s;border-radius:3px}
+  .pedal.gas .bar i{background:var(--ok)} .pedal.brk .bar i{background:var(--danger)}
+
+  /* panel ขวาบน — สไตล์ data dump เหมือนภาพอ้างอิง */
+  .datapanel{position:absolute;right:14px;top:14px;background:rgba(4,11,18,.8);
+    border:1px solid var(--hud-dim);border-radius:10px;padding:9px 12px;backdrop-filter:blur(6px);
+    font-size:10.5px;line-height:1.6;min-width:184px}
+  .datapanel .hd{color:var(--hud);font-weight:700;letter-spacing:1px;border-bottom:1px solid var(--hud-dim);
+    padding-bottom:4px;margin-bottom:5px;display:flex;justify-content:space-between}
+  .datapanel .meta span{color:var(--ink);opacity:.55}
+  .datapanel .meta b{color:var(--ok);float:right}
+  .datapanel .objs{margin-top:6px;border-top:1px dashed rgba(255,255,255,.12);padding-top:5px}
+  .datapanel .obj{display:flex;justify-content:space-between;color:var(--det);white-space:nowrap}
+  .datapanel .obj.near{color:var(--warn)} .datapanel .obj.crit{color:var(--danger)}
+  .datapanel .obj .d{color:var(--hud)}
+
+  .flash{position:absolute;inset:0;background:var(--danger);opacity:0;mix-blend-mode:screen}
+  .flash.on{animation:flash .5s}
+  @keyframes flash{0%{opacity:0}30%{opacity:.22}100%{opacity:0}}
+
+  .modeltag{position:absolute;left:14px;top:14px;font-size:10px;background:rgba(4,11,18,.7);
+    border:1px solid var(--hud-dim);border-radius:8px;padding:5px 10px;color:var(--hud);letter-spacing:.4px}
+  .modeltag b{color:var(--ink)}
+
+  .controls{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;justify-content:center;width:min(94vw,960px)}
+  .controls button{font-family:var(--mono);font-size:12px;cursor:pointer;background:#0a1620;color:var(--hud);
+    border:1px solid var(--hud-dim);border-radius:8px;padding:9px 15px;transition:.2s}
+  .controls button:hover{background:#10222e;box-shadow:0 0 14px rgba(0,240,255,.3)}
+  .controls button.on{background:#10222e;border-color:var(--hud);box-shadow:0 0 12px rgba(0,240,255,.4)}
+  .scene-name{color:var(--ink);opacity:.7;align-self:center;font-size:11px}
+  .wrap{display:flex;flex-direction:column;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="device" id="device">
+    <video id="cam" autoplay playsinline muted></video>
+
+    <div class="scene" id="scene">
+      <div class="sky-glow"></div>
+      <div class="road"></div>
+      <div class="edge l"></div><div class="edge r"></div>
+      <div class="lane-dash"></div>
+      <div class="sidecar l"></div><div class="sidecar r"></div>
+      <div class="lead-car" id="leadcar"></div>
+    </div>
+
+    <div class="hud">
+      <!-- เลน + พื้นที่ขับได้สีเขียว + เส้น perspective -->
+      <svg class="svg" viewBox="0 0 960 540" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="drv" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#22ff88" stop-opacity=".55"/>
+            <stop offset="1" stop-color="#22ff88" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <polygon id="drivable" points="370,540 590,540 510,275 450,275" fill="url(#drv)"/>
+        <path id="laneL" d="M370,540 L450,275" stroke="#00f0ff" stroke-width="3" fill="none" opacity=".85"/>
+        <path id="laneR" d="M590,540 L510,275" stroke="#00f0ff" stroke-width="3" fill="none" opacity=".85"/>
+        <!-- ตารางระยะบนพื้น (distance grid) -->
+        <line x1="408" y1="430" x2="552" y2="430" stroke="#00f0ff" stroke-width="1" opacity=".3"/>
+        <line x1="428" y1="360" x2="532" y2="360" stroke="#00f0ff" stroke-width="1" opacity=".3"/>
+        <line x1="442" y1="312" x2="518" y2="312" stroke="#00f0ff" stroke-width="1" opacity=".3"/>
+        <text x="556" y="432" fill="#00f0ff" font-size="10" opacity=".5" font-family="monospace">10m</text>
+        <text x="536" y="362" fill="#00f0ff" font-size="10" opacity=".5" font-family="monospace">20m</text>
+        <text x="522" y="314" fill="#00f0ff" font-size="10" opacity=".5" font-family="monospace">30m</text>
+      </svg>
+
+      <div class="modeltag">⬡ <b>YOLOv8</b> · LaneNet · MonoDepth · <span id="fps">27</span> FPS</div>
+
+      <div class="command" id="command">
+        <div class="ico" id="cmd-ico">➜</div>
+        <div class="txt"><b id="cmd-text">กำลังขับ — ทางตรง</b><span id="cmd-sub">CRUISING · เลนปกติ</span></div>
+      </div>
+
+      <div class="arrow left" id="arrL">‹</div>
+      <div class="arrow right" id="arrR">›</div>
+
+      <div id="boxes"></div>
+
+      <!-- ระยะรถข้างหน้า (FCW) -->
+      <div class="fcw" id="fcw">
+        <div><div class="lead">ระยะรถคันหน้า</div><div class="leadval"><span id="leadDist">24</span><small> ม.</small></div></div>
+        <div class="ttc">เวลาชน (TTC)<b id="ttc">2.4 วิ</b></div>
+      </div>
+
+      <div class="telemetry">
+        <div class="gauge"><div class="val" id="speed">62</div><div class="unit">KM/H</div></div>
+        <div class="pedals">
+          <div class="pedal gas"><span>คันเร่ง</span><div class="bar"><i id="gas"></i></div></div>
+          <div class="pedal brk"><span>เบรก&nbsp;&nbsp;</span><div class="bar"><i id="brk"></i></div></div>
+        </div>
+      </div>
+
+      <!-- data panel ขวาบน -->
+      <div class="datapanel">
+        <div class="hd">CAMERA_01 <span id="sys" style="color:var(--ok)">● ACTIVE</span></div>
+        <div class="meta">
+          <span>procFPS</span><b id="fps2">27</b><br>
+          <span>frame</span><b id="frame">1 / 341</b><br>
+          <span>objects</span><b id="objcount">3</b>
+        </div>
+        <div class="objs" id="objlist"></div>
+      </div>
+
+      <div class="scanline"></div>
+      <div class="vignette"></div>
+      <div class="flash" id="flash"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <span class="scene-name">สถานการณ์: <b id="sceneName">ขับทางตรง</b></span>
+    <button onclick="play('straight',this)">▶ ทางตรง</button>
+    <button onclick="play('traffic',this)">🚗 จราจรหนาแน่น</button>
+    <button onclick="play('left',this)">↰ เลี้ยวซ้าย</button>
+    <button onclick="play('right',this)">↱ เลี้ยวขวา</button>
+    <button onclick="play('slow',this)">⚠ รถหน้าใกล้</button>
+    <button onclick="play('redlight',this)">🛑 ไฟแดง</button>
+    <button onclick="play('pedestrian',this)">🚶 คนข้าม</button>
+    <button onclick="play('auto',this)">⟳ เล่นอัตโนมัติ</button>
+    <button onclick="toggleCam()" id="camBtn">📷 กล้องจริง</button>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const boxes=$('boxes'), command=$('command'), objlist=$('objlist');
+
+function box({x,y,w,h,label,dist,cls=''}){
+  const d=document.createElement('div');
+  d.className='box '+cls;
+  d.style.cssText=`left:${x}%;top:${y}%;width:${w}%;height:${h}%`;
+  d.innerHTML=`<span class="tag">${label}</span>`+(dist?`<span class="dist">${dist}</span>`:'');
+  boxes.appendChild(d);
+}
+function clearBoxes(){boxes.innerHTML='';}
+function setCmd(ico,t,s,m=''){command.className='command '+m;$('cmd-ico').textContent=ico;$('cmd-text').textContent=t;$('cmd-sub').textContent=s;}
+function setPedals(g,b){$('gas').style.width=g+'%';$('brk').style.width=b+'%';}
+function flash(){const f=$('flash');f.classList.remove('on');void f.offsetWidth;f.classList.add('on');}
+function setFCW(dist,ttc,mode=''){
+  $('fcw').className='fcw '+mode;
+  $('leadDist').textContent=dist; $('ttc').textContent=ttc;
+}
+// แสดงรายการวัตถุใน data panel (สไตล์ x/y/dist เหมือนภาพอ้างอิง)
+function setObjs(arr){
+  $('objcount').textContent=arr.length;
+  objlist.innerHTML=arr.map(o=>
+    `<div class="obj ${o.cls||''}"><span>${o.id}</span><span class="d">d:${o.d}m</span></div>`).join('');
+}
+
+const scenes={
+  straight(){
+    clearBoxes();
+    box({x:42,y:43,w:17,h:14,label:'car 0.92',dist:'24m'});
+    box({x:9,y:39,w:10,h:8,label:'car 0.78',dist:'41m'});
+    setCmd('➜','กำลังขับ — ทางตรง','CRUISING · เลนปกติ','');
+    $('arrL').classList.remove('show');$('arrR').classList.remove('show');
+    setPedals(48,0);$('speed').textContent='62';$('sys').textContent='● ACTIVE';
+    setFCW(24,'2.4 วิ','');
+    setObjs([{id:'car.0',d:24},{id:'car.1',d:41}]);
+    return 'ขับทางตรง';
+  },
+  traffic(){
+    clearBoxes();
+    box({x:38,y:42,w:20,h:17,label:'car 0.89',dist:'16m',cls:'near'});
+    box({x:2,y:38,w:11,h:11,label:'bus 0.67',dist:'22m',cls:'bus'});
+    box({x:15,y:40,w:11,h:9,label:'car 0.74',dist:'19m'});
+    box({x:60,y:40,w:9,h:8,label:'car 0.80',dist:'28m'});
+    box({x:71,y:41,w:8,h:7,label:'car 0.60',dist:'33m'});
+    box({x:80,y:43,w:13,h:13,label:'car 0.70',dist:'12m',cls:'near'});
+    setCmd('🚗','จราจรหนาแน่น — รักษาระยะ','TRAFFIC · 6 คันรอบตัว','alert');
+    $('arrL').classList.remove('show');$('arrR').classList.remove('show');
+    setPedals(15,25);$('speed').textContent='28';
+    setFCW(16,'2.0 วิ','warn');
+    setObjs([{id:'car.0',d:16,cls:'near'},{id:'bus.1',d:22},{id:'car.2',d:19},
+             {id:'car.3',d:28},{id:'car.4',d:33},{id:'car.5',d:12,cls:'near'}]);
+    return 'จราจรหนาแน่น';
+  },
+  left(){
+    clearBoxes();
+    box({x:40,y:44,w:16,h:13,label:'car 0.90',dist:'30m'});
+    setCmd('↰','เลี้ยวซ้ายข้างหน้า','TURN LEFT · ทางแยก 40 ม.','alert');
+    $('arrL').classList.add('show');$('arrR').classList.remove('show');
+    $('drivable').setAttribute('points','370,540 590,540 470,275 380,275');
+    setPedals(20,15);$('speed').textContent='38';
+    setFCW(30,'3.1 วิ','');
+    setObjs([{id:'car.0',d:30}]);
+    return 'เลี้ยวซ้าย';
+  },
+  right(){
+    clearBoxes();
+    box({x:44,y:43,w:15,h:13,label:'car 0.88',dist:'27m'});
+    box({x:72,y:30,w:9,h:13,label:'sign 0.81',cls:'sign'});
+    setCmd('↱','เลี้ยวขวาข้างหน้า','TURN RIGHT · ทางแยก 35 ม.','alert');
+    $('arrR').classList.add('show');$('arrL').classList.remove('show');
+    $('drivable').setAttribute('points','370,540 590,540 560,275 490,275');
+    setPedals(18,18);$('speed').textContent='34';
+    setFCW(27,'2.8 วิ','');
+    setObjs([{id:'car.0',d:27},{id:'sign.1',d:18}]);
+    return 'เลี้ยวขวา';
+  },
+  slow(){
+    clearBoxes();
+    box({x:36,y:38,w:24,h:22,label:'car 0.96',dist:'7m',cls:'crit'});
+    setCmd('⚠','รถคันหน้าใกล้ — ชะลอ / เตรียมเบรก','FORWARD COLLISION · 7 ม.','stop');
+    $('arrL').classList.remove('show');$('arrR').classList.remove('show');
+    $('drivable').setAttribute('points','370,540 590,540 510,275 450,275');
+    setPedals(0,70);$('speed').textContent='18';flash();
+    setFCW(7,'0.9 วิ','crit');
+    setObjs([{id:'car.0',d:7,cls:'crit'}]);
+    return 'รถหน้าใกล้ (FCW)';
+  },
+  redlight(){
+    clearBoxes();
+    box({x:45,y:14,w:7,h:14,label:'🔴 light 0.93',cls:'crit'});
+    box({x:40,y:45,w:17,h:14,label:'car 0.91',dist:'20m',cls:'near'});
+    setCmd('🛑','ไฟแดงข้างหน้า — เบรก','STOP · ไฟแดง 30 ม.','stop');
+    $('arrL').classList.remove('show');$('arrR').classList.remove('show');
+    setPedals(0,92);$('speed').textContent='10';flash();
+    $('sys').textContent='● BRAKING';
+    setFCW(20,'—','warn');
+    setObjs([{id:'light.0',d:30,cls:'crit'},{id:'car.1',d:20,cls:'near'}]);
+    return 'ไฟแดง — เบรก';
+  },
+  pedestrian(){
+    clearBoxes();
+    box({x:30,y:36,w:8,h:24,label:'person 0.92',dist:'11m',cls:'crit'});
+    box({x:49,y:44,w:14,h:12,label:'car 0.87',dist:'25m'});
+    setCmd('🛑','คนกำลังข้ามถนน — เบรกฉุกเฉิน!','EMERGENCY STOP · คน 11 ม.','stop');
+    $('arrL').classList.remove('show');$('arrR').classList.remove('show');
+    setPedals(0,100);$('speed').textContent='5';flash();
+    $('sys').textContent='● EMERGENCY';
+    setFCW(11,'0.7 วิ','crit');
+    setObjs([{id:'person.0',d:11,cls:'crit'},{id:'car.1',d:25}]);
+    return 'คนข้ามถนน — เบรกฉุกเฉิน';
+  }
+};
+
+let cur=null;
+function play(name,btn){
+  document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  if(name==='auto'){startAuto();return;}
+  stopAuto();
+  if(name!=='left'&&name!=='right') $('drivable').setAttribute('points','370,540 590,540 510,275 450,275');
+  $('sceneName').textContent=scenes[name]();
+}
+
+let autoTimer=null,si=0;
+const seq=['straight','traffic','left','straight','slow','redlight','straight','right','pedestrian','straight'];
+function startAuto(){stopAuto();$('sceneName').textContent='เล่นอัตโนมัติ…';
+  const step=()=>{const n=seq[si%seq.length];if(n!=='left'&&n!=='right')$('drivable').setAttribute('points','370,540 590,540 510,275 450,275');scenes[n]();si++;};
+  step();autoTimer=setInterval(step,2700);}
+function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}}
+
+let fc=1;
+setInterval(()=>{const f=24+Math.floor((si*5+performance.now()/151)%7);$('fps').textContent=f;$('fps2').textContent=f;
+  fc=(fc%341)+1;$('frame').textContent=fc+' / 341';},650);
+
+let stream=null;
+async function toggleCam(){
+  const cam=$('cam'),scene=$('scene'),btn=$('camBtn');
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;cam.style.display='none';scene.style.display='block';btn.textContent='📷 กล้องจริง';return;}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    cam.srcObject=stream;cam.style.display='block';scene.style.display='none';btn.textContent='✕ ปิดกล้อง';
+  }catch(e){alert('เปิดกล้องไม่ได้: '+e.message+'\n(ต้องเปิดผ่าน https หรือ localhost)');}
+}
+
+play('straight',document.querySelector('.controls button'));
+</script>
+</body>
+</html>

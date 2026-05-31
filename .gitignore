@@ -1,0 +1,22 @@
+# ===== ไม่อัปขึ้น GitHub (ไฟล์ใหญ่ / เฉพาะเครื่อง) =====
+# Python portable + venv + เครื่องมือ build
+tools/
+.venv/
+__pycache__/
+*.pyc
+
+# โมเดล / น้ำหนัก / วิดีโอ (ใหญ่ — CI โหลดเอง)
+*.pt
+*.tflite
+*.mp4
+build.log
+
+# Android build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+.idea/
+*.iml
+.DS_Store
