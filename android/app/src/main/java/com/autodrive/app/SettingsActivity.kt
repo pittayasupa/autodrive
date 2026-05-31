@@ -43,8 +43,13 @@ class SettingsActivity : AppCompatActivity() {
         bindSwitch(R.id.sw_stop, s.alertStopSign) { s.alertStopSign = it }
         bindSwitch(R.id.sw_ped, s.alertPedestrian) { s.alertPedestrian = it }
         bindSwitch(R.id.sw_fcw, s.alertFcw) { s.alertFcw = it }
+        bindSwitch(R.id.sw_manual, s.manualLane) { s.manualLane = it }
         bindSwitch(R.id.sw_auto, s.autoLane) { s.autoLane = it }
         bindSwitch(R.id.sw_lane, s.egoLaneOnly) { s.egoLaneOnly = it }
+
+        findViewById<MaterialButton>(R.id.btn_calibrate).setOnClickListener {
+            startActivity(android.content.Intent(this, CalibrateActivity::class.java))
+        }
 
         // ความกว้างเลน (15–60% step 5 -> เก็บเป็นสัดส่วน 0.15–0.60) — ต้องปัดให้ลงตัวกับ step ไม่งั้น Slider crash
         val slLane = findViewById<Slider>(R.id.sl_lane)

@@ -29,6 +29,14 @@ class Settings(ctx: Context) {
     var autoLane: Boolean get() = b("autolane", true); set(v) = setB("autolane", v)   // หาเลนเองจากรถคันหน้า
     var laneWidth: Float get() = f("lanew", 0.35f); set(v) = setF("lanew", v)   // สัดส่วนกว้างจอ 0.15–0.6 (ทวีคูณ 0.05)
 
+    // เลนที่ปรับเอง (trapezoid) — สัดส่วน 0–1 ของจอ
+    var manualLane: Boolean get() = b("manual", false); set(v) = setB("manual", v)
+    var laneBL: Float get() = f("lnbl", 0.28f); set(v) = setF("lnbl", v)   // ล่างซ้าย x
+    var laneBR: Float get() = f("lnbr", 0.72f); set(v) = setF("lnbr", v)   // ล่างขวา x
+    var laneTL: Float get() = f("lntl", 0.46f); set(v) = setF("lntl", v)   // บนซ้าย x
+    var laneTR: Float get() = f("lntr", 0.54f); set(v) = setF("lntr", v)   // บนขวา x
+    var laneTopY: Float get() = f("lnty", 0.55f); set(v) = setF("lnty", v) // ขอบบนเลน y
+
     // ค่าตัวเลข
     var warnDist: Float get() = f("warn", 12f); set(v) = setF("warn", v)
     var critDist: Float get() = f("crit", 7f); set(v) = setF("crit", v)

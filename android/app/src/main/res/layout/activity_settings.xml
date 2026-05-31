@@ -53,7 +53,16 @@
         <View style="@style/Divider" />
         <TextView style="@style/SectionLabel" android:text="เลนของเรา" />
         <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/sw_auto" style="@style/Row" android:text="เลนอัตโนมัติ (ปรับตามรถคันหน้า — เผื่อกล้องติดเอียง)" />
+            android:id="@+id/sw_manual" style="@style/Row" android:text="ใช้เลนที่ปรับเอง (manual)" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_calibrate"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="✎  ปรับเส้นเลน (กล้องสด)" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_auto" style="@style/Row" android:text="เลนอัตโนมัติ (ปรับตามรถคันหน้า — ใช้เมื่อไม่ได้ปรับเอง)" />
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/sw_lane" style="@style/Row" android:text="ตรวจเฉพาะเลนของฉัน" />
         <TextView android:id="@+id/lbl_lane" style="@style/Row" android:text="ความกว้างเลน" />

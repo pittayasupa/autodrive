@@ -30,5 +30,12 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="ตั้งค่า" />
+
+        <activity
+            android:name=".CalibrateActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:label="ปรับเลน" />
     </application>
 </manifest>

@@ -28,8 +28,9 @@ data class AdasResult(
     val stopSign: Boolean,
     val pedestrian: Boolean,
     val lightColor: String?,
-    val laneLeft: Float,
-    val laneRight: Float
+    // รูปทรงเลน (trapezoid) เป็น "สัดส่วน 0–1 ของจอ" — ให้ตรงกับหน้าปรับเลน
+    val laneNearL: Float, val laneNearR: Float,
+    val laneFarL: Float, val laneFarR: Float, val laneTopY: Float
 )
 
 /** วัตถุที่ parse แล้วจาก 1 เฟรม */
@@ -77,11 +78,31 @@ class Adas(private val s: Settings) {
             dets.add(Det(name, cat.score(), r, (r.left + r.right) / 2f, boxH, dist))
         }
 
-        // ---- หาเลน: อัตโนมัติ (ตามรถคันหน้า) หรือกลางจอ ----
-        val center = computeLaneCenter(dets, imgW, imgH)
-        val half = (if (s.egoLaneOnly) s.laneWidth else 0.9f) / 2f
-        val laneL = (center - half).coerceIn(0f, 1f) * imgW
-        val laneR = (center + half).coerceIn(0f, 1f) * imgW
+        // ---- หาเลน: ปรับเอง (trapezoid) / อัตโนมัติ (ตามรถคันหน้า) / กลางจอ ----
+        val blF: Float; val brF: Float; val tlF: Float; val trF: Float; val tyF: Float
+        if (s.manualLane) {
+            blF = s.laneBL; brF = s.laneBR; tlF = s.laneTL; trF = s.laneTR; tyF = s.laneTopY
+            laneCenterFrac = (blF + brF) / 2f
+        } else {
+            val center = if (s.autoLane) computeLaneCenter(dets, imgW, imgH) else { laneCenterFrac = 0.5f; 0.5f }
+            val half = (if (s.egoLaneOnly) s.laneWidth else 0.9f) / 2f
+            val farHalf = half * 0.45f
+            blF = (center - half).coerceIn(0f, 1f); brF = (center + half).coerceIn(0f, 1f)
+            tlF = (center - farHalf).coerceIn(0f, 1f); trF = (center + farHalf).coerceIn(0f, 1f)
+            tyF = 0.55f
+        }
+        val nearL = blF * imgW; val nearR = brF * imgW
+        val farL = tlF * imgW; val farR = trF * imgW
+        val topY = tyF * imgH
+
+        // จุดอยู่ในเลนไหม (ใช้ขอบล่างของกล่อง = จุดแตะถนน) ตาม trapezoid + perspective
+        fun inLane(cx: Float, by: Float): Boolean {
+            if (by <= topY) return false
+            val t = ((by - topY) / (imgH - topY)).coerceIn(0f, 1f)
+            val lx = farL + (nearL - farL) * t
+            val rx = farR + (nearR - farR) * t
+            return cx in lx..rx
+        }
 
         // ---- Pass 2: จัดประเภท + สร้างกล่อง ----
         val boxes = ArrayList<DetBox>()
@@ -93,12 +114,12 @@ class Adas(private val s: Settings) {
         var lightColor: String? = null
 
         for (p in dets) {
-            val inLane = p.cx in laneL..laneR
+            val isInLane = inLane(p.cx, p.rect.bottom)
             var level = Level.NORMAL
             var label = "${p.name} ${"%.2f".format(p.score)}"
 
             when {
-                p.name in vulnerable && p.dist != null && p.dist < pedCrit && inLane -> {
+                p.name in vulnerable && p.dist != null && p.dist < pedCrit && isInLane -> {
                     pedInLane = true; level = Level.CRIT
                 }
                 p.name == "traffic light" -> {
@@ -113,7 +134,7 @@ class Adas(private val s: Settings) {
                     }
                 }
                 p.name == "stop sign" -> { stopSign = true; level = Level.WARN }
-                p.name in vehicles && inLane && p.rect.bottom > 0.40f * imgH -> {
+                p.name in vehicles && isInLane -> {
                     if (p.dist != null && p.dist < leadDist) leadDist = p.dist
                     level = when {
                         p.dist != null && p.dist < critDist -> Level.CRIT
@@ -147,7 +168,8 @@ class Adas(private val s: Settings) {
         val (cmd, sub, lvl) = decide(leadDist, ttc, pedInLane, redLight, trafficLight, stopSign, lightColor, warnDist, critDist)
         return AdasResult(
             boxes, cmd, sub, lvl, leadLevel, leadDist, ttc,
-            redLight, trafficLight, stopSign, pedInLane, lightColor, laneL, laneR
+            redLight, trafficLight, stopSign, pedInLane, lightColor,
+            blF, brF, tlF, trF, tyF      // ส่งเป็นสัดส่วน 0–1
         )
     }
 

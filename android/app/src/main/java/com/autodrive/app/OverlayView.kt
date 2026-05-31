@@ -48,13 +48,17 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         fun mapX(x: Float) = x * scale - dx
         fun mapY(y: Float) = y * scale - dy
 
-        // ---- เส้นบอกขอบเลนของเรา ----
+        // ---- เส้นบอกขอบเลนของเรา (trapezoid) วาดด้วยสัดส่วนจอ ให้ตรงกับหน้าปรับเลน ----
         run {
-            box.color = cHud; box.strokeWidth = 3f
-            box.alpha = 150
-            val lx = mapX(r.laneLeft); val rx = mapX(r.laneRight)
-            canvas.drawLine(lx, height.toFloat(), lx + (width / 2f - lx) * 0.45f, height * 0.5f, box)
-            canvas.drawLine(rx, height.toFloat(), rx - (rx - width / 2f) * 0.45f, height * 0.5f, box)
+            val w = width.toFloat(); val h = height.toFloat()
+            val nlx = r.laneNearL * w; val nrx = r.laneNearR * w
+            val flx = r.laneFarL * w; val frx = r.laneFarR * w
+            val byv = h; val tyv = r.laneTopY * h
+            box.color = cHud; box.strokeWidth = 4f; box.alpha = 160
+            canvas.drawLine(nlx, byv, flx, tyv, box)   // เส้นซ้าย
+            canvas.drawLine(nrx, byv, frx, tyv, box)   // เส้นขวา
+            box.alpha = 90
+            canvas.drawLine(flx, tyv, frx, tyv, box)   // ขอบบน
             box.alpha = 255
         }
 
