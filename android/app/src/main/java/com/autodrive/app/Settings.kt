@@ -24,6 +24,10 @@ class Settings(ctx: Context) {
     var alertPedestrian: Boolean get() = b("a_ped", true); set(v) = setB("a_ped", v)
     var alertFcw: Boolean get() = b("a_fcw", true); set(v) = setB("a_fcw", v)
 
+    // เลนของเรา
+    var egoLaneOnly: Boolean get() = b("ego", true); set(v) = setB("ego", v)
+    var laneWidth: Float get() = f("lanew", 0.34f); set(v) = setF("lanew", v)   // สัดส่วนกว้างจอ 0.15–0.6
+
     // ค่าตัวเลข
     var warnDist: Float get() = f("warn", 12f); set(v) = setF("warn", v)
     var critDist: Float get() = f("crit", 7f); set(v) = setF("crit", v)

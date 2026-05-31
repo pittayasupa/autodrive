@@ -51,6 +51,15 @@
             android:id="@+id/sw_fcw" style="@style/Row" android:text="รถคันหน้าใกล้ (ชะลอ/เบรก)" />
 
         <View style="@style/Divider" />
+        <TextView style="@style/SectionLabel" android:text="เลนของเรา" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_lane" style="@style/Row" android:text="ตรวจเฉพาะเลนของฉัน" />
+        <TextView android:id="@+id/lbl_lane" style="@style/Row" android:text="ความกว้างเลน" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sl_lane" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="15" android:valueTo="60" android:stepSize="5" />
+
+        <View style="@style/Divider" />
         <TextView style="@style/SectionLabel" android:text="ปรับค่า" />
 
         <TextView android:id="@+id/lbl_warn" style="@style/Row" android:text="ระยะเริ่มเตือน (ชะลอ)" />

@@ -43,6 +43,18 @@ class SettingsActivity : AppCompatActivity() {
         bindSwitch(R.id.sw_stop, s.alertStopSign) { s.alertStopSign = it }
         bindSwitch(R.id.sw_ped, s.alertPedestrian) { s.alertPedestrian = it }
         bindSwitch(R.id.sw_fcw, s.alertFcw) { s.alertFcw = it }
+        bindSwitch(R.id.sw_lane, s.egoLaneOnly) { s.egoLaneOnly = it }
+
+        // ความกว้างเลน (15–60% -> เก็บเป็นสัดส่วน 0.15–0.60)
+        val slLane = findViewById<Slider>(R.id.sl_lane)
+        val lblLane = findViewById<TextView>(R.id.lbl_lane)
+        val initLane = (s.laneWidth * 100).roundToInt().coerceIn(15, 60)
+        slLane.value = initLane.toFloat()
+        lblLane.text = "ความกว้างเลน: $initLane%"
+        slLane.addOnChangeListener { _, value, _ ->
+            lblLane.text = "ความกว้างเลน: ${value.toInt()}%"
+            s.laneWidth = value / 100f
+        }
 
         bindSlider(R.id.sl_warn, R.id.lbl_warn, "ระยะเริ่มเตือน (ชะลอ)", "ม.", s.warnDist) { s.warnDist = it }
         bindSlider(R.id.sl_crit, R.id.lbl_crit, "ระยะอันตราย (เบรก)", "ม.", s.critDist) { s.critDist = it }

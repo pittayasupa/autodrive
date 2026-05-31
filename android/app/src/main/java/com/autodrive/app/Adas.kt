@@ -21,13 +21,16 @@ data class AdasResult(
     val command: String,
     val sub: String,
     val level: Level,
+    val leadLevel: Level,      // ระดับจากรถคันหน้าในเลนเราเท่านั้น (สำหรับเสียง FCW)
     val leadDistM: Float,
     val ttcSec: Float?,
     val redLight: Boolean,
     val trafficLight: Boolean,
     val stopSign: Boolean,
     val pedestrian: Boolean,
-    val lightColor: String?
+    val lightColor: String?,
+    val laneLeft: Float,       // ขอบเลนซ้าย (pixel ของภาพ) สำหรับวาดเส้น
+    val laneRight: Float
 )
 
 /**
@@ -51,9 +54,12 @@ class Adas(private val s: Settings) {
 
     fun process(result: ObjectDetectorResult, bmp: Bitmap): AdasResult {
         val imgW = bmp.width
+        val imgH = bmp.height
         val focal = (imgW / 2.0) / tan(Math.toRadians(s.hfov.toDouble() / 2.0))
-        val laneL = 0.30f * imgW
-        val laneR = 0.70f * imgW
+        // เลนของเรา = แถบกลางจอ (ปรับความกว้างได้); ปิด egoLaneOnly = ครอบคลุมเกือบเต็มจอ
+        val half = (if (s.egoLaneOnly) s.laneWidth else 0.9f) / 2f
+        val laneL = (0.5f - half) * imgW
+        val laneR = (0.5f + half) * imgW
         val warnDist = s.warnDist
         val critDist = s.critDist
 
@@ -97,7 +103,8 @@ class Adas(private val s: Settings) {
                     }
                 }
                 name == "stop sign" -> { stopSign = true; level = Level.WARN }
-                name in vehicles && inLane -> {
+                // นับเป็น "รถคันหน้า" เฉพาะในเลนเรา และอยู่ครึ่งล่างของจอ (ตัดรถไกล/ข้ามแยกออก)
+                name in vehicles && inLane && r.bottom > 0.40f * imgH -> {
                     if (dist != null && dist < leadDist) leadDist = dist
                     level = when {
                         dist != null && dist < critDist -> Level.CRIT
@@ -122,8 +129,18 @@ class Adas(private val s: Settings) {
         lastLead = leadDist
         lastTimeNs = now
 
+        // ระดับจากรถคันหน้า (ในเลนเรา) อย่างเดียว -> ใช้ขับเสียง FCW แยกจากไฟแดง/คนข้าม
+        val leadLevel = when {
+            leadDist < critDist || (ttc != null && ttc < ttcCrit) -> Level.CRIT
+            leadDist < warnDist || (ttc != null && ttc < ttcWarn) -> Level.WARN
+            else -> Level.NORMAL
+        }
+
         val (cmd, sub, level) = decide(leadDist, ttc, pedInLane, redLight, trafficLight, stopSign, warnDist, critDist)
-        return AdasResult(boxes, cmd, sub, level, leadDist, ttc, redLight, trafficLight, stopSign, pedInLane, lightColor)
+        return AdasResult(
+            boxes, cmd, sub, level, leadLevel, leadDist, ttc,
+            redLight, trafficLight, stopSign, pedInLane, lightColor, laneL, laneR
+        )
     }
 
     private fun decide(

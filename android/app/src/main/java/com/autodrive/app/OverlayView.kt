@@ -47,6 +47,16 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         fun mapX(x: Float) = x * scale - dx
         fun mapY(y: Float) = y * scale - dy
 
+        // ---- เส้นบอกขอบเลนของเรา ----
+        run {
+            box.color = cHud; box.strokeWidth = 3f
+            box.alpha = 150
+            val lx = mapX(r.laneLeft); val rx = mapX(r.laneRight)
+            canvas.drawLine(lx, height.toFloat(), lx + (width / 2f - lx) * 0.45f, height * 0.5f, box)
+            canvas.drawLine(rx, height.toFloat(), rx - (rx - width / 2f) * 0.45f, height * 0.5f, box)
+            box.alpha = 255
+        }
+
         // ---- กล่อง detection ----
         for (b in r.boxes) {
             val col = colorOf(b.level)
