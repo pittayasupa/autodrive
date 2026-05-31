@@ -33,8 +33,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settings: Settings
     private lateinit var adas: Adas
     private var detector: ObjectDetector? = null
+    private var detectorFast: Boolean? = null
     private var speaker: Speaker? = null
-    private val gate = EventGate(10)
+    private val gate = EventGate(12)
+    private var lastProcNs = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,7 +54,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
-        setupDetector()
+        ensureDetector()
 
         if (hasCameraPermission()) startCamera()
         else ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQ_CAM)
@@ -73,17 +75,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupDetector() {
-        val base = BaseOptions.builder()
-            .setModelAssetPath("efficientdet_lite2.tflite")   // อินพุต 448px ตรวจวัตถุไกล/เล็กดีกว่า
-            .build()
+    /** สร้าง/สร้างใหม่ detector ตามโหมดที่เลือก (เร็ว=Lite0 / แม่น=Lite2) */
+    private fun ensureDetector() {
+        val fast = settings.modelFast
+        if (detector != null && detectorFast == fast) return
+        detector?.close()
+        val model = if (fast) "efficientdet_lite0.tflite" else "efficientdet_lite2.tflite"
+        val base = BaseOptions.builder().setModelAssetPath(model).build()
         val options = ObjectDetector.ObjectDetectorOptions.builder()
             .setBaseOptions(base)
             .setRunningMode(RunningMode.IMAGE)
-            .setScoreThreshold(0.3f)     // ต่ำลง -> จับไฟ/วัตถุไกลได้ไวขึ้น
+            .setScoreThreshold(0.3f)
             .setMaxResults(30)
             .build()
         detector = ObjectDetector.createFromOptions(this, options)
+        detectorFast = fast
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ensureDetector()   // รับค่าโมเดลใหม่ถ้าเปลี่ยนในตั้งค่า
     }
 
     private fun startCamera() {
@@ -109,6 +120,13 @@ class MainActivity : AppCompatActivity() {
     private fun analyze(proxy: ImageProxy) {
         val det = detector
         if (det == null) { proxy.close(); return }
+        // จำกัด FPS การประมวลผลตามตั้งค่า (30 = ไม่จำกัด)
+        val maxF = settings.maxFps
+        if (maxF in 1..29) {
+            val now = System.nanoTime()
+            if (now - lastProcNs < 1_000_000_000L / maxF) { proxy.close(); return }
+            lastProcNs = now
+        }
         try {
             val bitmap = proxy.toUprightBitmap()
             val mpImage = BitmapImageBuilder(bitmap).build()
@@ -166,9 +184,19 @@ class MainActivity : AppCompatActivity() {
                 "ชะลอ รักษาระยะ", "Slow down, keep distance")
         )
 
+        val mode = settings.resetMode
+        if (mode == 2) {
+            // โหมด "พูดซ้ำตามเวลา": พูดเมื่อมีเงื่อนไข แล้วเว้นช่วงด้วย cooldown ของ Speaker
+            for (e in events) {
+                if (e.trigger) { sp.alert(e.key, e.th, e.en, v, b, cd, vol); break }
+            }
+            return
+        }
+        // โหมด gate: 0=reset เมื่อวัตถุหายจากจอ, 1=reset เมื่อเงื่อนไขหมด
         var fired = false
         for (e in events) {
-            val eligible = gate.check(e.key, e.trigger, e.onScreen)   // เรียกทุก event เพื่ออัปเดต reset
+            val onScreen = if (mode == 0) e.onScreen else e.trigger
+            val eligible = gate.check(e.key, e.trigger, onScreen)   // เรียกทุก event เพื่ออัปเดต reset
             if (!fired && eligible) {
                 sp.alert(e.key, e.th, e.en, v, b, cd, vol)
                 gate.markFired(e.key)

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true">
@@ -69,6 +70,38 @@
         <com.google.android.material.slider.Slider
             android:id="@+id/sl_lane" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:valueFrom="15" android:valueTo="60" android:stepSize="5" />
+
+        <View style="@style/Divider" />
+        <TextView style="@style/SectionLabel" android:text="ประสิทธิภาพ" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_model" style="@style/Row"
+            android:text="โหมดเร็ว (Lite0) — ลื่นขึ้น แต่ตรวจไกลน้อยลง" />
+        <TextView android:id="@+id/lbl_fps" style="@style/Row" android:text="FPS สูงสุด" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sl_fps" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="5" android:valueTo="30" android:stepSize="5" />
+
+        <View style="@style/Divider" />
+        <TextView style="@style/SectionLabel" android:text="วิธีรีเซ็ตการเตือน" />
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/grp_reset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rm0" style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                android:textSize="11sp" android:text="หายจากจอ" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rm1" style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                android:textSize="11sp" android:text="เงื่อนไขหมด" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rm2" style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                android:textSize="11sp" android:text="ตามเวลา" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <View style="@style/Divider" />
         <TextView style="@style/SectionLabel" android:text="ปรับค่า" />

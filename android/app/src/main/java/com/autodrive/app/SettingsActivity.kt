@@ -5,6 +5,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.slider.Slider
 import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlin.math.roundToInt
@@ -49,6 +50,27 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.btn_calibrate).setOnClickListener {
             startActivity(android.content.Intent(this, CalibrateActivity::class.java))
+        }
+
+        // ประสิทธิภาพ
+        bindSwitch(R.id.sw_model, s.modelFast) { s.modelFast = it }
+
+        val slFps = findViewById<Slider>(R.id.sl_fps)
+        val lblFps = findViewById<TextView>(R.id.lbl_fps)
+        val initFps = ((s.maxFps / 5f).roundToInt() * 5).coerceIn(5, 30)
+        slFps.value = initFps.toFloat()
+        lblFps.text = if (initFps >= 30) "FPS สูงสุด: ไม่จำกัด" else "FPS สูงสุด: $initFps"
+        slFps.addOnChangeListener { _, value, _ ->
+            val n = value.toInt()
+            lblFps.text = if (n >= 30) "FPS สูงสุด: ไม่จำกัด" else "FPS สูงสุด: $n"
+            s.maxFps = n
+        }
+
+        // วิธีรีเซ็ตการเตือน
+        val grp = findViewById<MaterialButtonToggleGroup>(R.id.grp_reset)
+        grp.check(when (s.resetMode) { 1 -> R.id.rm1; 2 -> R.id.rm2; else -> R.id.rm0 })
+        grp.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) s.resetMode = when (checkedId) { R.id.rm1 -> 1; R.id.rm2 -> 2; else -> 0 }
         }
 
         // ความกว้างเลน (15–60% step 5 -> เก็บเป็นสัดส่วน 0.15–0.60) — ต้องปัดให้ลงตัวกับ step ไม่งั้น Slider crash

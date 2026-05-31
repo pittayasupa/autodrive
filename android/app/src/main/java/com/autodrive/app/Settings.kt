@@ -11,6 +11,13 @@ class Settings(ctx: Context) {
     private fun setB(k: String, v: Boolean) = p.edit().putBoolean(k, v).apply()
     private fun f(k: String, d: Float) = p.getFloat(k, d)
     private fun setF(k: String, v: Float) = p.edit().putFloat(k, v).apply()
+    private fun i(k: String, d: Int) = p.getInt(k, d)
+    private fun setI(k: String, v: Int) = p.edit().putInt(k, v).apply()
+
+    // ประสิทธิภาพ / พฤติกรรม
+    var maxFps: Int get() = i("maxfps", 15); set(v) = setI("maxfps", v)          // จำกัดรอบประมวลผล (30 = ไม่จำกัด)
+    var modelFast: Boolean get() = b("fast", false); set(v) = setB("fast", v)    // true=Lite0 เร็ว, false=Lite2 แม่น/ไกล
+    var resetMode: Int get() = i("resetmode", 0); set(v) = setI("resetmode", v)  // 0=หายจากจอ 1=เงื่อนไขหมด 2=ตามเวลา
 
     // เสียง
     var voiceEnabled: Boolean get() = b("voice", true); set(v) = setB("voice", v)
