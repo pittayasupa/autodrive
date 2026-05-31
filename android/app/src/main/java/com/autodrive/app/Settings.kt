@@ -15,6 +15,7 @@ class Settings(ctx: Context) {
     // เสียง
     var voiceEnabled: Boolean get() = b("voice", true); set(v) = setB("voice", v)
     var beepEnabled: Boolean get() = b("beep", true); set(v) = setB("beep", v)
+    var volume: Float get() = f("volume", 0.85f); set(v) = setF("volume", v)   // 0.0–1.0
 
     // ประเภทการแจ้งเตือน
     var alertRedLight: Boolean get() = b("a_red", true); set(v) = setB("a_red", v)

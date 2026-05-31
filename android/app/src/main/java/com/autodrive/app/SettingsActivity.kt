@@ -4,20 +4,40 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.slider.Slider
 import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlin.math.roundToInt
 
 class SettingsActivity : AppCompatActivity() {
 
+    private var speaker: Speaker? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
         title = "ตั้งค่า"
         val s = Settings(this)
+        speaker = Speaker(this)
 
         bindSwitch(R.id.sw_voice, s.voiceEnabled) { s.voiceEnabled = it }
         bindSwitch(R.id.sw_beep, s.beepEnabled) { s.beepEnabled = it }
+
+        // ระดับเสียง (0–100% -> เก็บเป็น 0.0–1.0)
+        val slVol = findViewById<Slider>(R.id.sl_vol)
+        val lblVol = findViewById<TextView>(R.id.lbl_vol)
+        val initVol = (s.volume * 100).roundToInt().coerceIn(0, 100)
+        slVol.value = initVol.toFloat()
+        lblVol.text = "ระดับเสียง: $initVol%"
+        slVol.addOnChangeListener { _, value, _ ->
+            lblVol.text = "ระดับเสียง: ${value.toInt()}%"
+            s.volume = value / 100f
+        }
+
+        // ปุ่มทดสอบเสียงพูด
+        findViewById<MaterialButton>(R.id.btn_test).setOnClickListener {
+            speaker?.test(s.beepEnabled, s.volume)
+        }
         bindSwitch(R.id.sw_red, s.alertRedLight) { s.alertRedLight = it }
         bindSwitch(R.id.sw_light, s.alertTrafficLight) { s.alertTrafficLight = it }
         bindSwitch(R.id.sw_stop, s.alertStopSign) { s.alertStopSign = it }
@@ -30,6 +50,11 @@ class SettingsActivity : AppCompatActivity() {
         bindSlider(R.id.sl_cd, R.id.lbl_cd, "เว้นระยะพูดซ้ำ", "วิ", s.cooldownSec) { s.cooldownSec = it }
 
         findViewById<Button>(R.id.btn_done).setOnClickListener { finish() }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        speaker?.shutdown()
     }
 
     private fun bindSwitch(id: Int, init: Boolean, onChange: (Boolean) -> Unit) {

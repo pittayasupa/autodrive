@@ -131,19 +131,20 @@ class MainActivity : AppCompatActivity() {
         val b = settings.beepEnabled
         if (!v && !b) return
         val cd = (settings.cooldownSec * 1000).toLong()
+        val vol = settings.volume
         when {
             a.pedestrian && settings.alertPedestrian ->
-                sp.alert("ped", "ระวัง คนข้ามถนน เบรก", "Caution, pedestrian, brake", v, b, cd)
+                sp.alert("ped", "ระวัง คนข้ามถนน เบรก", "Caution, pedestrian, brake", v, b, cd, vol)
             a.redLight && settings.alertRedLight ->
-                sp.alert("red", "ไฟแดงข้างหน้า เตรียมหยุด", "Red light ahead, prepare to stop", v, b, cd)
+                sp.alert("red", "ไฟแดงข้างหน้า เตรียมหยุด", "Red light ahead, prepare to stop", v, b, cd, vol)
             a.level == Level.CRIT && settings.alertFcw ->
-                sp.alert("fcw", "ระวัง รถข้างหน้าใกล้มาก เบรก", "Car ahead too close, brake", v, b, cd)
+                sp.alert("fcw", "ระวัง รถข้างหน้าใกล้มาก เบรก", "Car ahead too close, brake", v, b, cd, vol)
             a.stopSign && settings.alertStopSign ->
-                sp.alert("stop", "ป้ายหยุดข้างหน้า", "Stop sign ahead", v, b, cd)
+                sp.alert("stop", "ป้ายหยุดข้างหน้า", "Stop sign ahead", v, b, cd, vol)
             a.trafficLight && settings.alertTrafficLight ->
-                sp.alert("light", "มีทางแยกและไฟจราจรข้างหน้า ระวัง", "Junction and traffic light ahead", v, b, cd)
+                sp.alert("light", "มีทางแยกและไฟจราจรข้างหน้า ระวัง", "Junction and traffic light ahead", v, b, cd, vol)
             a.level == Level.WARN && settings.alertFcw ->
-                sp.alert("slow", "ชะลอ รักษาระยะ", "Slow down, keep distance", v, b, cd)
+                sp.alert("slow", "ชะลอ รักษาระยะ", "Slow down, keep distance", v, b, cd, vol)
         }
     }
 
