@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ตั้งค่า AutoDrive"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <TextView style="@style/SectionLabel" android:text="เสียงแจ้งเตือน" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_voice" style="@style/Row" android:text="พูดข้อความเตือน (ภาษาไทย)" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_beep" style="@style/Row" android:text="เสียงบี๊บเตือน" />
+
+        <View style="@style/Divider" />
+        <TextView style="@style/SectionLabel" android:text="ประเภทการแจ้งเตือน" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_red" style="@style/Row" android:text="ไฟแดง — เตือนให้เตรียมหยุด" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_light" style="@style/Row" android:text="ทางแยก / ไฟจราจร" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_stop" style="@style/Row" android:text="ป้ายหยุด" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_ped" style="@style/Row" android:text="คนข้ามถนน" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_fcw" style="@style/Row" android:text="รถคันหน้าใกล้ (ชะลอ/เบรก)" />
+
+        <View style="@style/Divider" />
+        <TextView style="@style/SectionLabel" android:text="ปรับค่า" />
+
+        <TextView android:id="@+id/lbl_warn" style="@style/Row" android:text="ระยะเริ่มเตือน (ชะลอ)" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sl_warn" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="5" android:valueTo="40" android:stepSize="1" />
+
+        <TextView android:id="@+id/lbl_crit" style="@style/Row" android:text="ระยะอันตราย (เบรก)" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sl_crit" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="3" android:valueTo="25" android:stepSize="1" />
+
+        <TextView android:id="@+id/lbl_hfov" style="@style/Row" android:text="มุมมองกล้อง (HFOV)" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sl_hfov" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="40" android:valueTo="90" android:stepSize="1" />
+
+        <TextView android:id="@+id/lbl_cd" style="@style/Row" android:text="เว้นระยะพูดซ้ำ" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sl_cd" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:valueFrom="2" android:valueTo="15" android:stepSize="1" />
+
+        <Button
+            android:id="@+id/btn_done"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="เสร็จสิ้น" />
+    </LinearLayout>
+</ScrollView>

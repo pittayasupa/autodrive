@@ -1,11 +1,13 @@
 package com.autodrive.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
@@ -28,8 +30,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var overlay: OverlayView
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var settings: Settings
+    private lateinit var adas: Adas
     private var detector: ObjectDetector? = null
-    private val adas = Adas()
+    private var speaker: Speaker? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +42,14 @@ class MainActivity : AppCompatActivity() {
 
         previewView = findViewById(R.id.camera_preview)
         overlay = findViewById(R.id.overlay)
+        settings = Settings(this)
+        adas = Adas(settings)
+        speaker = Speaker(this)
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        findViewById<ImageButton>(R.id.btn_settings).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
 
         setupDetector()
 
@@ -101,8 +112,11 @@ class MainActivity : AppCompatActivity() {
             val bitmap = proxy.toUprightBitmap()
             val mpImage = BitmapImageBuilder(bitmap).build()
             val result = det.detect(mpImage)
-            val adasResult = adas.process(result, bitmap.width, bitmap.height)
-            overlay.post { overlay.setResults(adasResult, bitmap.width, bitmap.height) }
+            val adasResult = adas.process(result, bitmap)
+            overlay.post {
+                overlay.setResults(adasResult, bitmap.width, bitmap.height)
+                handleAudio(adasResult)
+            }
         } catch (_: Exception) {
             // ข้ามเฟรมที่ผิดพลาด
         } finally {
@@ -110,10 +124,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** เลือกเตือนเสียงตามลำดับความสำคัญ (1 เหตุการณ์ต่อเฟรม) */
+    private fun handleAudio(a: AdasResult) {
+        val sp = speaker ?: return
+        val v = settings.voiceEnabled
+        val b = settings.beepEnabled
+        if (!v && !b) return
+        val cd = (settings.cooldownSec * 1000).toLong()
+        when {
+            a.pedestrian && settings.alertPedestrian ->
+                sp.alert("ped", "ระวัง คนข้ามถนน เบรก", "Caution, pedestrian, brake", v, b, cd)
+            a.redLight && settings.alertRedLight ->
+                sp.alert("red", "ไฟแดงข้างหน้า เตรียมหยุด", "Red light ahead, prepare to stop", v, b, cd)
+            a.level == Level.CRIT && settings.alertFcw ->
+                sp.alert("fcw", "ระวัง รถข้างหน้าใกล้มาก เบรก", "Car ahead too close, brake", v, b, cd)
+            a.stopSign && settings.alertStopSign ->
+                sp.alert("stop", "ป้ายหยุดข้างหน้า", "Stop sign ahead", v, b, cd)
+            a.trafficLight && settings.alertTrafficLight ->
+                sp.alert("light", "มีทางแยกและไฟจราจรข้างหน้า ระวัง", "Junction and traffic light ahead", v, b, cd)
+            a.level == Level.WARN && settings.alertFcw ->
+                sp.alert("slow", "ชะลอ รักษาระยะ", "Slow down, keep distance", v, b, cd)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
         detector?.close()
+        speaker?.shutdown()
     }
 
     companion object { private const val REQ_CAM = 10 }
