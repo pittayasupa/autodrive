@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#070B12">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="28dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AutoDrive"
+            android:textSize="42sp"
+            android:textStyle="bold"
+            android:textColor="#00F0FF"
+            android:letterSpacing="0.02" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ADAS • ระบบช่วยขับขี่ (แจ้งเตือนบนจอ)"
+            android:textSize="14sp"
+            android:textColor="#A8C0CC"
+            android:paddingTop="4dp"
+            android:paddingBottom="40dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_start"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="▶   เริ่มขับขี่"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#06121A"
+            app:backgroundTint="#00E0F0"
+            app:cornerRadius="16dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_settings"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_marginTop="14dp"
+            android:text="⚙   ตั้งค่าแจ้งเตือน"
+            android:textSize="16sp"
+            android:textColor="#00F0FF"
+            app:strokeColor="#1E5A66"
+            app:cornerRadius="16dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_help"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="ℹ   วิธีใช้ / คำเตือน"
+            android:textSize="14sp"
+            android:textColor="#A8C0CC" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠ แสดงคำเตือนบนจอเท่านั้น ไม่ควบคุมรถจริง — ผู้ขับต้องรับผิดชอบการขับขี่เสมอ"
+            android:textSize="12sp"
+            android:textColor="#6E8390"
+            android:gravity="center"
+            android:paddingTop="36dp"
+            android:lineSpacingExtra="3dp" />
+    </LinearLayout>
+</ScrollView>
