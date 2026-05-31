@@ -14,14 +14,17 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- ปุ่มตั้งค่า (อยู่บนสุด คลิกได้) -->
+    <!-- ปุ่มตั้งค่า (มุมบนขวา อยู่บนสุด คลิกได้) -->
     <ImageButton
         android:id="@+id/btn_settings"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:background="#99000000"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="12dp"
+        android:background="#B3000000"
+        android:scaleType="centerInside"
+        android:padding="10dp"
+        android:elevation="8dp"
         android:src="@android:drawable/ic_menu_preferences"
         android:tint="@android:color/white"
         android:contentDescription="ตั้งค่า" />

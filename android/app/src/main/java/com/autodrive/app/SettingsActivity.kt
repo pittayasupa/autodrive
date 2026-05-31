@@ -26,7 +26,7 @@ class SettingsActivity : AppCompatActivity() {
         // ระดับเสียง (0–100% -> เก็บเป็น 0.0–1.0)
         val slVol = findViewById<Slider>(R.id.sl_vol)
         val lblVol = findViewById<TextView>(R.id.lbl_vol)
-        val initVol = (s.volume * 100).roundToInt().coerceIn(0, 100)
+        val initVol = ((s.volume * 100 / 5f).roundToInt() * 5).coerceIn(0, 100)
         slVol.value = initVol.toFloat()
         lblVol.text = "ระดับเสียง: $initVol%"
         slVol.addOnChangeListener { _, value, _ ->
@@ -43,12 +43,13 @@ class SettingsActivity : AppCompatActivity() {
         bindSwitch(R.id.sw_stop, s.alertStopSign) { s.alertStopSign = it }
         bindSwitch(R.id.sw_ped, s.alertPedestrian) { s.alertPedestrian = it }
         bindSwitch(R.id.sw_fcw, s.alertFcw) { s.alertFcw = it }
+        bindSwitch(R.id.sw_auto, s.autoLane) { s.autoLane = it }
         bindSwitch(R.id.sw_lane, s.egoLaneOnly) { s.egoLaneOnly = it }
 
-        // ความกว้างเลน (15–60% -> เก็บเป็นสัดส่วน 0.15–0.60)
+        // ความกว้างเลน (15–60% step 5 -> เก็บเป็นสัดส่วน 0.15–0.60) — ต้องปัดให้ลงตัวกับ step ไม่งั้น Slider crash
         val slLane = findViewById<Slider>(R.id.sl_lane)
         val lblLane = findViewById<TextView>(R.id.lbl_lane)
-        val initLane = (s.laneWidth * 100).roundToInt().coerceIn(15, 60)
+        val initLane = ((s.laneWidth * 100 / 5f).roundToInt() * 5).coerceIn(15, 60)
         slLane.value = initLane.toFloat()
         lblLane.text = "ความกว้างเลน: $initLane%"
         slLane.addOnChangeListener { _, value, _ ->

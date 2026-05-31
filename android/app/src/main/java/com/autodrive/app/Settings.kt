@@ -26,7 +26,8 @@ class Settings(ctx: Context) {
 
     // เลนของเรา
     var egoLaneOnly: Boolean get() = b("ego", true); set(v) = setB("ego", v)
-    var laneWidth: Float get() = f("lanew", 0.34f); set(v) = setF("lanew", v)   // สัดส่วนกว้างจอ 0.15–0.6
+    var autoLane: Boolean get() = b("autolane", true); set(v) = setB("autolane", v)   // หาเลนเองจากรถคันหน้า
+    var laneWidth: Float get() = f("lanew", 0.35f); set(v) = setF("lanew", v)   // สัดส่วนกว้างจอ 0.15–0.6 (ทวีคูณ 0.05)
 
     // ค่าตัวเลข
     var warnDist: Float get() = f("warn", 12f); set(v) = setF("warn", v)

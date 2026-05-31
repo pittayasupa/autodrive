@@ -4,24 +4,23 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RectF
 import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetectorResult
+import kotlin.math.abs
 import kotlin.math.tan
 
 /** ระดับความรุนแรง -> ใช้กำหนดสี */
 enum class Level { NORMAL, WARN, CRIT }
 
-/** กล่องที่จะวาด (พิกัดเป็น pixel ของภาพ input) */
 data class DetBox(
     val left: Float, val top: Float, val right: Float, val bottom: Float,
     val label: String, val distM: Float?, val level: Level
 )
 
-/** ผลรวมต่อเฟรม + ธงเหตุการณ์สำหรับขับเสียงเตือน */
 data class AdasResult(
     val boxes: List<DetBox>,
     val command: String,
     val sub: String,
     val level: Level,
-    val leadLevel: Level,      // ระดับจากรถคันหน้าในเลนเราเท่านั้น (สำหรับเสียง FCW)
+    val leadLevel: Level,
     val leadDistM: Float,
     val ttcSec: Float?,
     val redLight: Boolean,
@@ -29,13 +28,19 @@ data class AdasResult(
     val stopSign: Boolean,
     val pedestrian: Boolean,
     val lightColor: String?,
-    val laneLeft: Float,       // ขอบเลนซ้าย (pixel ของภาพ) สำหรับวาดเส้น
+    val laneLeft: Float,
     val laneRight: Float
 )
 
+/** วัตถุที่ parse แล้วจาก 1 เฟรม */
+private class Det(
+    val name: String, val score: Float, val rect: RectF,
+    val cx: Float, val boxH: Float, val dist: Float?
+)
+
 /**
- * ตรรกะ ADAS: ประมาณระยะกล้องเดียว (pinhole) + แยกสีไฟจราจร + ตัดสินใจคำสั่ง
- * อ่านค่าตั้งค่าสดจาก Settings (เปลี่ยนในแอปแล้วมีผลทันที)
+ * ตรรกะ ADAS: ประมาณระยะกล้องเดียว + แยกสีไฟจราจร + เลนอัตโนมัติ + ตัดสินใจคำสั่ง
+ * อ่านค่าตั้งค่าสดจาก Settings
  */
 class Adas(private val s: Settings) {
 
@@ -51,18 +56,34 @@ class Adas(private val s: Settings) {
 
     private var lastLead = 999f
     private var lastTimeNs = 0L
+    private var laneCenterFrac = 0.5f   // ตำแหน่งกึ่งกลางเลน (อัปเดตอัตโนมัติ)
 
     fun process(result: ObjectDetectorResult, bmp: Bitmap): AdasResult {
         val imgW = bmp.width
         val imgH = bmp.height
         val focal = (imgW / 2.0) / tan(Math.toRadians(s.hfov.toDouble() / 2.0))
-        // เลนของเรา = แถบกลางจอ (ปรับความกว้างได้); ปิด egoLaneOnly = ครอบคลุมเกือบเต็มจอ
-        val half = (if (s.egoLaneOnly) s.laneWidth else 0.9f) / 2f
-        val laneL = (0.5f - half) * imgW
-        val laneR = (0.5f + half) * imgW
         val warnDist = s.warnDist
         val critDist = s.critDist
 
+        // ---- Pass 1: parse ทุก detection ----
+        val dets = ArrayList<Det>()
+        for (d in result.detections()) {
+            val cat = d.categories().firstOrNull() ?: continue
+            val name = cat.categoryName()
+            val r = d.boundingBox()
+            val boxH = r.bottom - r.top
+            val realH = realHeights[name]
+            val dist = if (realH != null && boxH > 1f) (focal.toFloat() * realH) / boxH else null
+            dets.add(Det(name, cat.score(), r, (r.left + r.right) / 2f, boxH, dist))
+        }
+
+        // ---- หาเลน: อัตโนมัติ (ตามรถคันหน้า) หรือกลางจอ ----
+        val center = computeLaneCenter(dets, imgW, imgH)
+        val half = (if (s.egoLaneOnly) s.laneWidth else 0.9f) / 2f
+        val laneL = (center - half).coerceIn(0f, 1f) * imgW
+        val laneR = (center + half).coerceIn(0f, 1f) * imgW
+
+        // ---- Pass 2: จัดประเภท + สร้างกล่อง ----
         val boxes = ArrayList<DetBox>()
         var leadDist = 999f
         var pedInLane = false
@@ -71,54 +92,42 @@ class Adas(private val s: Settings) {
         var redLight = false
         var lightColor: String? = null
 
-        for (d in result.detections()) {
-            val cat = d.categories().firstOrNull() ?: continue
-            val name = cat.categoryName()
-            val score = cat.score()
-            val r = d.boundingBox()
-            val cx = (r.left + r.right) / 2f
-            val boxH = r.bottom - r.top
-
-            val realH = realHeights[name]
-            var dist: Float? = null
-            if (realH != null && boxH > 1f) dist = (focal.toFloat() * realH) / boxH
-
-            val inLane = cx in laneL..laneR
+        for (p in dets) {
+            val inLane = p.cx in laneL..laneR
             var level = Level.NORMAL
-            var label = "$name ${"%.2f".format(score)}"
+            var label = "${p.name} ${"%.2f".format(p.score)}"
 
             when {
-                name in vulnerable && dist != null && dist < pedCrit && inLane -> {
+                p.name in vulnerable && p.dist != null && p.dist < pedCrit && inLane -> {
                     pedInLane = true; level = Level.CRIT
                 }
-                name == "traffic light" -> {
+                p.name == "traffic light" -> {
                     trafficLight = true
-                    val color = classifyLight(bmp, r)
+                    val color = classifyLight(bmp, p.rect)
                     lightColor = color
                     when (color) {
-                        "red" -> { redLight = true; level = Level.CRIT; label = "RED light ${"%.2f".format(score)}" }
-                        "green" -> { level = Level.NORMAL; label = "GREEN light ${"%.2f".format(score)}" }
-                        "yellow" -> { level = Level.WARN; label = "YELLOW light ${"%.2f".format(score)}" }
-                        else -> { level = Level.WARN }
+                        "red" -> { redLight = true; level = Level.CRIT; label = "RED light ${"%.2f".format(p.score)}" }
+                        "green" -> { level = Level.NORMAL; label = "GREEN light ${"%.2f".format(p.score)}" }
+                        "yellow" -> { level = Level.WARN; label = "YELLOW light ${"%.2f".format(p.score)}" }
+                        else -> level = Level.WARN
                     }
                 }
-                name == "stop sign" -> { stopSign = true; level = Level.WARN }
-                // นับเป็น "รถคันหน้า" เฉพาะในเลนเรา และอยู่ครึ่งล่างของจอ (ตัดรถไกล/ข้ามแยกออก)
-                name in vehicles && inLane && r.bottom > 0.40f * imgH -> {
-                    if (dist != null && dist < leadDist) leadDist = dist
+                p.name == "stop sign" -> { stopSign = true; level = Level.WARN }
+                p.name in vehicles && inLane && p.rect.bottom > 0.40f * imgH -> {
+                    if (p.dist != null && p.dist < leadDist) leadDist = p.dist
                     level = when {
-                        dist != null && dist < critDist -> Level.CRIT
-                        dist != null && dist < warnDist -> Level.WARN
+                        p.dist != null && p.dist < critDist -> Level.CRIT
+                        p.dist != null && p.dist < warnDist -> Level.WARN
                         else -> Level.NORMAL
                     }
                 }
             }
 
-            val showDist = if (name in realHeights) dist else null
-            boxes.add(DetBox(r.left, r.top, r.right, r.bottom, label, showDist, level))
+            val showDist = if (p.name in realHeights) p.dist else null
+            boxes.add(DetBox(p.rect.left, p.rect.top, p.rect.right, p.rect.bottom, label, showDist, level))
         }
 
-        // TTC จากการเปลี่ยนแปลงระยะรถคันหน้า
+        // ---- TTC ----
         val now = System.nanoTime()
         var ttc: Float? = null
         if (lastTimeNs != 0L && leadDist < 900f && lastLead < 900f) {
@@ -129,18 +138,43 @@ class Adas(private val s: Settings) {
         lastLead = leadDist
         lastTimeNs = now
 
-        // ระดับจากรถคันหน้า (ในเลนเรา) อย่างเดียว -> ใช้ขับเสียง FCW แยกจากไฟแดง/คนข้าม
         val leadLevel = when {
             leadDist < critDist || (ttc != null && ttc < ttcCrit) -> Level.CRIT
             leadDist < warnDist || (ttc != null && ttc < ttcWarn) -> Level.WARN
             else -> Level.NORMAL
         }
 
-        val (cmd, sub, level) = decide(leadDist, ttc, pedInLane, redLight, trafficLight, stopSign, lightColor, warnDist, critDist)
+        val (cmd, sub, lvl) = decide(leadDist, ttc, pedInLane, redLight, trafficLight, stopSign, lightColor, warnDist, critDist)
         return AdasResult(
-            boxes, cmd, sub, level, leadLevel, leadDist, ttc,
+            boxes, cmd, sub, lvl, leadLevel, leadDist, ttc,
             redLight, trafficLight, stopSign, pedInLane, lightColor, laneL, laneR
         )
+    }
+
+    /** เลนอัตโนมัติ: เลื่อนกึ่งกลางเลนตามรถคันหน้าที่ใกล้สุด (กันกล้องติดเอียง) */
+    private fun computeLaneCenter(dets: List<Det>, imgW: Int, imgH: Int): Float {
+        if (!s.autoLane) { laneCenterFrac = 0.5f; return 0.5f }
+
+        var best: Det? = null
+        var bestScore = -1f
+        for (p in dets) {
+            if (p.name !in vehicles) continue
+            if (p.rect.bottom < 0.45f * imgH) continue          // เอาเฉพาะรถที่อยู่ใกล้ (ครึ่งล่าง)
+            val area = (p.rect.right - p.rect.left) * (p.rect.bottom - p.rect.top)
+            val cxFrac = p.cx / imgW
+            val prox = 1f / (1f + 4f * abs(cxFrac - laneCenterFrac))   // ชอบรถที่ใกล้แนวเลนเดิม
+            val sc = area * prox
+            if (sc > bestScore) { bestScore = sc; best = p }
+        }
+
+        if (best != null) {
+            val obs = (best.cx / imgW).coerceIn(0.15f, 0.85f)
+            laneCenterFrac += 0.12f * (obs - laneCenterFrac)        // เลื่อนแบบนุ่มนวล (EMA)
+        } else {
+            laneCenterFrac += 0.03f * (0.5f - laneCenterFrac)       // ไม่มีรถ -> ค่อย ๆ กลับกลางจอ
+        }
+        laneCenterFrac = laneCenterFrac.coerceIn(0.2f, 0.8f)
+        return laneCenterFrac
     }
 
     private fun decide(
@@ -195,7 +229,7 @@ class Adas(private val s: Settings) {
         }
         if (n == 0) return "unknown"
         val maxc = maxOf(red, green, yellow)
-        if (maxc < n * 0.04f) return "unknown"   // ไม่มีสีเด่นพอ
+        if (maxc < n * 0.04f) return "unknown"
         return when (maxc) { red -> "red"; green -> "green"; else -> "yellow" }
     }
 }
