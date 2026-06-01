@@ -6,10 +6,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.Environment
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.Toast
@@ -19,9 +24,19 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
+import java.io.File
+import kotlin.math.sqrt
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -60,6 +75,30 @@ class MainActivity : AppCompatActivity() {
         override fun onProviderDisabled(provider: String) {}
     }
 
+    // dashcam
+    private var videoCapture: VideoCapture<Recorder>? = null
+    private var recording: Recording? = null
+    private var isRecording = false
+    private var recBtn: MaterialButton? = null
+
+    // g-sensor (เบรกแรง)
+    private var sensorManager: SensorManager? = null
+    private var lastBrakeNs = 0L
+    private val sensorListener = object : SensorEventListener {
+        override fun onSensorChanged(e: SensorEvent) {
+            val m = sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2])
+            if (m > 4.0f) {   // ความเร่ง/หน่วงแรง (เบรก/กระแทก)
+                val now = System.nanoTime()
+                if (now - lastBrakeNs > 3_000_000_000L && settings.dashcamHardBrake) {
+                    lastBrakeNs = now
+                    speaker?.alert("brake", "ตรวจพบเบรกแรง บันทึกเหตุการณ์", "Hard braking detected", settings.voiceEnabled, settings.beepEnabled, 0L, settings.volume)
+                    if (!isRecording) startRecording()
+                }
+            }
+        }
+        override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -75,8 +114,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btn_settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        recBtn = findViewById(R.id.btn_rec)
+        recBtn?.setOnClickListener { toggleRecording() }
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         ensureDetector()
         requestNeededPermissions()
     }
@@ -135,6 +177,15 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         ensureDetector()   // รับค่าโมเดลใหม่ถ้าเปลี่ยนในตั้งค่า
+        sensorManager?.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)?.let {
+            sensorManager?.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager?.unregisterListener(sensorListener)
+        if (isRecording) stopRecording()
     }
 
     private fun startCamera() {
@@ -150,11 +201,61 @@ class MainActivity : AppCompatActivity() {
                 .build()
             analysis.setAnalyzer(cameraExecutor) { proxy -> analyze(proxy) }
 
+            val recorder = Recorder.Builder()
+                .setQualitySelector(QualitySelector.from(Quality.HD))
+                .build()
+            val vc = VideoCapture.withOutput(recorder)
+
             provider.unbindAll()
-            provider.bindToLifecycle(
-                this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis
-            )
+            try {
+                provider.bindToLifecycle(
+                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis, vc
+                )
+                videoCapture = vc
+            } catch (e: Exception) {
+                // อุปกรณ์ไม่รองรับ preview+analysis+video พร้อมกัน -> ตัด video ออก
+                videoCapture = null
+                recBtn?.visibility = android.view.View.GONE
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+            }
+            if (videoCapture != null && settings.dashcamAuto && !isRecording) startRecording()
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun toggleRecording() {
+        if (videoCapture == null) {
+            Toast.makeText(this, "อุปกรณ์นี้บันทึกวิดีโอพร้อมตรวจจับไม่ได้", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (isRecording) stopRecording() else startRecording()
+    }
+
+    private fun startRecording() {
+        val vc = videoCapture ?: return
+        if (isRecording) return
+        val dir = getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+        val file = File(dir, "AutoDrive_${System.currentTimeMillis()}.mp4")
+        val out = FileOutputOptions.Builder(file).build()
+        recording = vc.output.prepareRecording(this, out)
+            .start(ContextCompat.getMainExecutor(this)) { ev ->
+                when (ev) {
+                    is VideoRecordEvent.Start -> { isRecording = true; updateRecBtn() }
+                    is VideoRecordEvent.Finalize -> {
+                        isRecording = false; updateRecBtn()
+                        if (!ev.hasError()) Toast.makeText(this, "บันทึกแล้ว: ${file.name}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        updateRecBtn()
+    }
+
+    private fun stopRecording() {
+        recording?.stop()
+        recording = null
+    }
+
+    private fun updateRecBtn() {
+        recBtn?.text = if (isRecording) "■ REC" else "● REC"
     }
 
     private fun analyze(proxy: ImageProxy) {
@@ -275,6 +376,8 @@ class MainActivity : AppCompatActivity() {
         detector?.close()
         speaker?.shutdown()
         try { locationManager?.removeUpdates(locListener) } catch (_: Exception) {}
+        try { sensorManager?.unregisterListener(sensorListener) } catch (_: Exception) {}
+        stopRecording()
     }
 
     companion object { private const val REQ_CAM = 10 }

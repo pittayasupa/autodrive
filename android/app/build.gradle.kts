@@ -34,9 +34,10 @@ android {
         jvmTarget = "17"
     }
 
-    // โมเดล .tflite ต้องไม่ถูกบีบอัด เพื่อให้ MediaPipe memory-map ได้
+    // โมเดล .tflite/.task ต้องไม่ถูกบีบอัด เพื่อให้ MediaPipe memory-map ได้
     androidResources {
         noCompress.add("tflite")
+        noCompress.add("task")
     }
 }
 
@@ -50,6 +51,7 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$camerax")
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
+    implementation("androidx.camera:camera-video:$camerax")
 
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
 }

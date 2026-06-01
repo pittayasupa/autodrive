@@ -27,13 +27,15 @@ jobs:
       - name: Install SDK packages
         run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Download detection models (Lite0 fast + Lite2 accurate)
+      - name: Download models (detector Lite0/Lite2 + face landmarker)
         run: |
           mkdir -p android/app/src/main/assets
           curl -L --fail -o android/app/src/main/assets/efficientdet_lite0.tflite \
             https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/latest/efficientdet_lite0.tflite
           curl -L --fail -o android/app/src/main/assets/efficientdet_lite2.tflite \
             https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite2/float32/latest/efficientdet_lite2.tflite
+          curl -L --fail -o android/app/src/main/assets/face_landmarker.task \
+            https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task
           ls -lh android/app/src/main/assets/
 
       - name: Set up Gradle
@@ -45,19 +47,22 @@ jobs:
         working-directory: android
         run: gradle assembleDebug --no-daemon --stacktrace
 
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk AutoDriveByBest.apk
+
       - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: autodrive-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: AutoDriveByBest
+          path: AutoDriveByBest.apk
           if-no-files-found: error
 
       - name: Publish APK to Release (ลิงก์โหลดตรง ไม่ต้อง login)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: AutoDrive APK (ล่าสุด)
+          name: Auto Drive by Best (ล่าสุด)
           body: |
-            ดาวน์โหลด **app-debug.apk** ด้านล่างได้เลย (เปิดบนมือถือก็โหลดได้)
+            ดาวน์โหลด **AutoDriveByBest.apk** ด้านล่างได้เลย (เปิดบนมือถือก็โหลดได้)
             แล้วแตะติดตั้ง → อนุญาต "ติดตั้งจากแหล่งที่ไม่รู้จัก" → เปิดแอป → อนุญาตกล้อง
-          files: android/app/build/outputs/apk/debug/*.apk
+          files: AutoDriveByBest.apk

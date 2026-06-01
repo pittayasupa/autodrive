@@ -19,6 +19,9 @@ class HomeActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btn_settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        findViewById<MaterialButton>(R.id.btn_drowsy).setOnClickListener {
+            startActivity(Intent(this, DrowsinessActivity::class.java))
+        }
         findViewById<MaterialButton>(R.id.btn_help).setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle("วิธีใช้ AutoDrive")

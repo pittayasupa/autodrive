@@ -19,6 +19,10 @@ class Settings(ctx: Context) {
     var modelFast: Boolean get() = b("fast", false); set(v) = setB("fast", v)    // true=Lite0 เร็ว, false=Lite2 แม่น/ไกล
     var resetMode: Int get() = i("resetmode", 0); set(v) = setI("resetmode", v)  // 0=หายจากจอ 1=เงื่อนไขหมด 2=ตามเวลา
 
+    // dashcam
+    var dashcamAuto: Boolean get() = b("dc_auto", false); set(v) = setB("dc_auto", v)        // อัดอัตโนมัติเมื่อเปิดกล้อง
+    var dashcamHardBrake: Boolean get() = b("dc_brake", true); set(v) = setB("dc_brake", v)   // แจ้งเมื่อเบรกแรง
+
     // เสียง
     var voiceEnabled: Boolean get() = b("voice", true); set(v) = setB("voice", v)
     var beepEnabled: Boolean get() = b("beep", true); set(v) = setB("beep", v)

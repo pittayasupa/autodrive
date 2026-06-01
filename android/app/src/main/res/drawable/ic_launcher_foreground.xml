@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+
+    <!-- ถนน (perspective) -->
+    <path android:fillColor="#2E3440" android:pathData="M40,90 L68,90 L60,50 L48,50 Z" />
+    <!-- ขอบเลนฟ้า -->
+    <path android:strokeColor="#00F0FF" android:strokeWidth="1.6" android:strokeAlpha="0.9"
+        android:pathData="M40,90 L48,50" />
+    <path android:strokeColor="#00F0FF" android:strokeWidth="1.6" android:strokeAlpha="0.9"
+        android:pathData="M68,90 L60,50" />
+    <!-- เส้นกลางถนน -->
+    <path android:fillColor="#F4F4F4" android:pathData="M53,82 h2 v-6 h-2 z" />
+    <path android:fillColor="#F4F4F4" android:fillAlpha="0.8" android:pathData="M53.6,68 h1.4 v-4 h-1.4 z" />
+
+    <!-- รถ (มองจากด้านหลัง) -->
+    <path android:fillColor="#00E0F0"
+        android:pathData="M42,84 L66,84 L66,72 Q66,67 61,67 L47,67 Q42,67 42,72 Z" />
+    <!-- กระจกหลัง -->
+    <path android:fillColor="#0B1320" android:pathData="M47,72 h14 v4 h-14 z" />
+    <!-- ไฟท้าย -->
+    <path android:fillColor="#FF3B30" android:pathData="M44,80 h4 v3 h-4 z" />
+    <path android:fillColor="#FF3B30" android:pathData="M60,80 h4 v3 h-4 z" />
+    <!-- กรอบ detection -->
+    <path android:strokeColor="#FFCC00" android:strokeWidth="1.4" android:strokeAlpha="0.95"
+        android:pathData="M40,64 L68,64 M40,64 L40,86 M68,64 L68,86 M40,86 L68,86" />
+</vector>

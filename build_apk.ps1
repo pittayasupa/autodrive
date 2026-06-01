@@ -36,6 +36,9 @@ if (-not (Test-Path "$assets\efficientdet_lite0.tflite")) {
 if (-not (Test-Path "$assets\efficientdet_lite2.tflite")) {
     Invoke-WebRequest "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite2/float32/latest/efficientdet_lite2.tflite" -OutFile "$assets\efficientdet_lite2.tflite" -UseBasicParsing
 }
+if (-not (Test-Path "$assets\face_landmarker.task")) {
+    Invoke-WebRequest "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task" -OutFile "$assets\face_landmarker.task" -UseBasicParsing
+}
 
 # --- 5) build ---
 $gradle = (Get-ChildItem "$t\gradle" -Directory | Where-Object { $_.Name -like 'gradle-*' } | Select-Object -First 1).FullName + "\bin\gradle.bat"

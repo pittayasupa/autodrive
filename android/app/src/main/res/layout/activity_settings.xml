@@ -97,6 +97,13 @@
             android:valueFrom="5" android:valueTo="30" android:stepSize="5" />
 
         <View style="@style/Divider" />
+        <TextView style="@style/SectionLabel" android:text="บันทึกวิดีโอ (dashcam)" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_dcauto" style="@style/Row" android:text="เริ่มอัดอัตโนมัติเมื่อเปิดกล้อง" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/sw_dcbrake" style="@style/Row" android:text="แจ้ง+อัดเมื่อเบรกแรง (เซนเซอร์)" />
+
+        <View style="@style/Divider" />
         <TextView style="@style/SectionLabel" android:text="วิธีรีเซ็ตการเตือน" />
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/grp_reset"

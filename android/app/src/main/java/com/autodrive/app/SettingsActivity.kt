@@ -70,6 +70,8 @@ class SettingsActivity : AppCompatActivity() {
 
         // ประสิทธิภาพ
         bindSwitch(R.id.sw_model, s.modelFast) { s.modelFast = it }
+        bindSwitch(R.id.sw_dcauto, s.dashcamAuto) { s.dashcamAuto = it }
+        bindSwitch(R.id.sw_dcbrake, s.dashcamHardBrake) { s.dashcamHardBrake = it }
 
         val slFps = findViewById<Slider>(R.id.sl_fps)
         val lblFps = findViewById<TextView>(R.id.lbl_fps)
