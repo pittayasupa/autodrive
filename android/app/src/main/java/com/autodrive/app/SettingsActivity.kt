@@ -44,6 +44,22 @@ class SettingsActivity : AppCompatActivity() {
         bindSwitch(R.id.sw_stop, s.alertStopSign) { s.alertStopSign = it }
         bindSwitch(R.id.sw_ped, s.alertPedestrian) { s.alertPedestrian = it }
         bindSwitch(R.id.sw_fcw, s.alertFcw) { s.alertFcw = it }
+        bindSwitch(R.id.sw_go, s.alertGoReminder) { s.alertGoReminder = it }
+        bindSwitch(R.id.sw_speed, s.showSpeed) { s.showSpeed = it }
+        bindSwitch(R.id.sw_overspeed, s.alertOverspeed) { s.alertOverspeed = it }
+        bindSwitch(R.id.sw_gap, s.alertTimeGap) { s.alertTimeGap = it }
+
+        // ความเร็วจำกัด (40–160 step 10)
+        val slLimit = findViewById<Slider>(R.id.sl_limit)
+        val lblLimit = findViewById<TextView>(R.id.lbl_limit)
+        val initLimit = ((s.speedLimit / 10f).roundToInt() * 10).coerceIn(40, 160)
+        slLimit.value = initLimit.toFloat()
+        lblLimit.text = "ความเร็วจำกัด: $initLimit km/h"
+        slLimit.addOnChangeListener { _, value, _ ->
+            lblLimit.text = "ความเร็วจำกัด: ${value.toInt()} km/h"
+            s.speedLimit = value.toInt()
+        }
+
         bindSwitch(R.id.sw_manual, s.manualLane) { s.manualLane = it }
         bindSwitch(R.id.sw_auto, s.autoLane) { s.autoLane = it }
         bindSwitch(R.id.sw_lane, s.egoLaneOnly) { s.egoLaneOnly = it }

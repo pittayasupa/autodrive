@@ -1,10 +1,14 @@
 package com.autodrive.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.ImageButton
@@ -38,6 +42,24 @@ class MainActivity : AppCompatActivity() {
     private val gate = EventGate(12)
     private var lastProcNs = 0L
 
+    // GPS / ความเร็ว
+    private var locationManager: LocationManager? = null
+    private var speedKmh = -1f          // -1 = ยังไม่มีค่า GPS
+    private var cameraStarted = false
+    private var locationStarted = false
+    // สถานะสำหรับเตือน "ไปได้แล้ว"
+    private var prevLightColor: String? = null
+    private var prevLead = 999f
+
+    private val locListener = object : LocationListener {
+        override fun onLocationChanged(loc: Location) {
+            speedKmh = if (loc.hasSpeed()) loc.speed * 3.6f else speedKmh
+        }
+        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -54,25 +76,43 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         ensureDetector()
-
-        if (hasCameraPermission()) startCamera()
-        else ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQ_CAM)
+        requestNeededPermissions()
     }
 
-    private fun hasCameraPermission() = ContextCompat.checkSelfPermission(
-        this, Manifest.permission.CAMERA
-    ) == PackageManager.PERMISSION_GRANTED
+    private fun granted(p: String) =
+        ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
+
+    private fun requestNeededPermissions() {
+        val need = ArrayList<String>()
+        if (!granted(Manifest.permission.CAMERA)) need.add(Manifest.permission.CAMERA)
+        if (!granted(Manifest.permission.ACCESS_FINE_LOCATION)) need.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (need.isEmpty()) onPermsReady()
+        else ActivityCompat.requestPermissions(this, need.toTypedArray(), REQ_CAM)
+    }
 
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (hasCameraPermission()) startCamera()
-        else {
+        onPermsReady()
+    }
+
+    private fun onPermsReady() {
+        if (!granted(Manifest.permission.CAMERA)) {
             Toast.makeText(this, "ต้องอนุญาตใช้กล้องเพื่อใช้งาน", Toast.LENGTH_LONG).show()
-            finish()
+            finish(); return
         }
+        if (!cameraStarted) { startCamera(); cameraStarted = true }
+        if (granted(Manifest.permission.ACCESS_FINE_LOCATION) && !locationStarted) startLocation()
+    }
+
+    private fun startLocation() {
+        try {
+            locationManager?.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, locListener)
+            locationStarted = true
+        } catch (_: SecurityException) {}
     }
 
     /** สร้าง/สร้างใหม่ detector ตามโหมดที่เลือก (เร็ว=Lite0 / แม่น=Lite2) */
@@ -134,6 +174,7 @@ class MainActivity : AppCompatActivity() {
             val adasResult = adas.process(result, bitmap)
             overlay.post {
                 overlay.setResults(adasResult, bitmap.width, bitmap.height)
+                overlay.setSpeed(speedKmh, settings.showSpeed, settings.speedLimit)
                 handleAudio(adasResult)
             }
         } catch (_: Exception) {
@@ -164,6 +205,23 @@ class MainActivity : AppCompatActivity() {
         val anyLight = a.trafficLight          // ยังมีไฟจราจรในจอ
         val leadExists = a.leadDistM < 900f     // ยังมีรถคันหน้าในเลน
 
+        // ----- ความเร็ว / ระยะเวลา -----
+        val spd = speedKmh                                   // -1 = ไม่มี GPS
+        val overspeed = settings.alertOverspeed && spd >= 0f && spd > settings.speedLimit
+        // กฎ 2 วินาที: เวลา = ระยะ / ความเร็ว(m/s)
+        var timeGap = -1f
+        if (leadExists && spd > 20f) timeGap = a.leadDistM / (spd / 3.6f)
+        val tooClose = settings.alertTimeGap && timeGap in 0f..2.0f
+
+        // ----- เตือน "ไปได้แล้ว" (ไฟเขียว / รถคันหน้าเคลื่อน) -----
+        val stopped = spd in 0f..5f                          // หยุดนิ่ง (จาก GPS)
+        val greenNow = a.trafficLight && a.lightColor == "green"
+        val greenJust = prevLightColor == "red" && greenNow
+        val leadMoved = stopped && prevLead < 12f && a.leadDistM > prevLead + 6f && a.leadDistM < 900f
+        val goTrigger = settings.alertGoReminder && (greenJust || leadMoved)
+        if (a.trafficLight) prevLightColor = a.lightColor
+        prevLead = a.leadDistM
+
         // (key, trigger=ควรเตือน, onScreen=ยังเห็นวัตถุชนิดนั้นในจอ, ข้อความ)
         val events = listOf(
             Ev("ped", a.pedestrian && settings.alertPedestrian, a.personOnScreen,
@@ -172,6 +230,12 @@ class MainActivity : AppCompatActivity() {
                 "ไฟแดงข้างหน้า เตรียมหยุด", "Red light, prepare to stop"),
             Ev("fcw", a.leadLevel == Level.CRIT && settings.alertFcw, leadExists,
                 "ระวัง รถข้างหน้าใกล้มาก เบรก", "Car too close, brake"),
+            Ev("go", goTrigger, goTrigger,
+                "ไปได้แล้ว รถข้างหน้าเคลื่อนแล้ว", "You can go now"),
+            Ev("gap", tooClose, tooClose,
+                "เว้นระยะ จี้ท้ายเกินไป", "Too close, keep distance"),
+            Ev("over", overspeed, overspeed,
+                "ความเร็วเกินกำหนด", "Over the speed limit"),
             Ev("yellow", a.lightColor == "yellow" && lt, anyLight,
                 "ไฟเหลืองข้างหน้า ระวัง ชะลอ", "Yellow light ahead, slow down"),
             Ev("stop", a.stopSign && settings.alertStopSign, a.stopSign,
@@ -210,6 +274,7 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
         detector?.close()
         speaker?.shutdown()
+        try { locationManager?.removeUpdates(locListener) } catch (_: Exception) {}
     }
 
     companion object { private const val REQ_CAM = 10 }

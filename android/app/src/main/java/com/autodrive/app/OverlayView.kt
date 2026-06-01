@@ -28,6 +28,9 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     private var imgW = 1
     private var imgH = 1
     private var smoothLead = 0f
+    private var speedKmh = -1f
+    private var showSpeed = false
+    private var speedLimit = 90
 
     private val box = Paint().apply { style = Paint.Style.STROKE; strokeWidth = 6f; isAntiAlias = true }
     private val fill = Paint().apply { style = Paint.Style.FILL; isAntiAlias = true }
@@ -77,6 +80,11 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         for (i in tracks.indices) if (!used[i]) tracks[i].miss++
         tracks.addAll(toAdd)
 
+        postInvalidateOnAnimation()
+    }
+
+    fun setSpeed(kmh: Float, show: Boolean, limit: Int) {
+        speedKmh = kmh; showSpeed = show; speedLimit = limit
         postInvalidateOnAnimation()
     }
 
@@ -198,6 +206,22 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
             text.textSize = 46f; text.color = cmdCol
             canvas.drawText(r.ttcSec?.let { "%.1f s".format(it) } ?: "--", fx + 240f, fy + 86f, text)
             text.color = Color.WHITE
+        }
+
+        // ---- มาตรวัดความเร็ว (มุมซ้ายล่าง) ----
+        if (showSpeed && speedKmh >= 0f) {
+            val over = speedKmh > speedLimit
+            val col = if (over) cRed else cOk
+            val sw = 150f
+            val sx = 16f; val sy = height - 130f
+            panel.color = Color.parseColor("#E0050C14")
+            canvas.drawRoundRect(RectF(sx, sy, sx + sw, sy + 96f), 16f, 16f, panel)
+            box.color = col; box.strokeWidth = if (over) 5f else 3f
+            canvas.drawRoundRect(RectF(sx, sy, sx + sw, sy + 96f), 16f, 16f, box)
+            text.textSize = 52f; text.color = col
+            canvas.drawText("%.0f".format(speedKmh), sx + 16f, sy + 56f, text)
+            text.textSize = 22f; text.color = Color.WHITE
+            canvas.drawText("km/h  •  จำกัด $speedLimit", sx + 16f, sy + 84f, text)
         }
 
         // ---- หมายเหตุ ----

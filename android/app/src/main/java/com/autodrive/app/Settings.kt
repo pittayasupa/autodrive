@@ -30,6 +30,13 @@ class Settings(ctx: Context) {
     var alertStopSign: Boolean get() = b("a_stop", true); set(v) = setB("a_stop", v)
     var alertPedestrian: Boolean get() = b("a_ped", true); set(v) = setB("a_ped", v)
     var alertFcw: Boolean get() = b("a_fcw", true); set(v) = setB("a_fcw", v)
+    var alertGoReminder: Boolean get() = b("a_go", true); set(v) = setB("a_go", v)   // ไฟเขียว/รถคันหน้าไปแล้ว
+
+    // GPS / ความเร็ว
+    var showSpeed: Boolean get() = b("spd_show", true); set(v) = setB("spd_show", v)
+    var alertOverspeed: Boolean get() = b("spd_over", true); set(v) = setB("spd_over", v)
+    var speedLimit: Int get() = i("spd_limit", 90); set(v) = setI("spd_limit", v)
+    var alertTimeGap: Boolean get() = b("spd_gap", true); set(v) = setB("spd_gap", v)   // กฎ 2 วินาที
 
     // เลนของเรา
     var egoLaneOnly: Boolean get() = b("ego", true); set(v) = setB("ego", v)
